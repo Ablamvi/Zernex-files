@@ -1,0 +1,7 @@
+ZERNEX Files 1.0.4 — état de livraison
+
+Modifications : navigation parent/racine plus explicite ; suppression des cases à cocher et commandes individuelles sur chaque ligne/carte du navigateur local ; appui long pour sélectionner ; barre d’actions groupées ancrée en bas dans les navigateurs local et SAF ; sélection multiple conservée.
+
+Contrôles : script de vérification statique 30/30, XML Android parsés, délimiteurs Kotlin équilibrés. Ces contrôles ne remplacent pas une compilation.
+
+Compilation Android : non confirmée dans cet environnement. Exécuter les tâches Gradle des variantes play et android10Legacy dans une CI disposant du SDK Android et des dépendances Gradle.

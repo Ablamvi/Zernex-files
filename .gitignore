@@ -1,0 +1,14 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+*.iml
+.DS_Store
+# Never commit private signing material
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.pk8
+*.key
