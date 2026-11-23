@@ -5,6 +5,7 @@
 - Remplacement des couleurs de catégories dispersées par un système sémantique commun local + SAF.
 - Icônes de fichiers simplifiées sur fond neutre, sans dégradés multicolores ; accent limité à un indicateur de catégorie.
 - Ajout d'un rail visuel de catégories à icônes pour filtrer directement les fichiers.
+- Ajout d'une navigation inférieure par icônes et d'une page Outils en tuiles visuelles ; parcours SAF doté de ses raccourcis Favoris/Corbeille/Réglages.
 - Marque ZERNEX compacte et palette centralisée.
 - VersionName 2.0.0 / versionCode 2000.
 
