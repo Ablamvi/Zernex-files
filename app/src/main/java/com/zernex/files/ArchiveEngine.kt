@@ -436,8 +436,10 @@ internal object ArchiveEngine {
             val (relative, target) = resolve(rawName, isDirectory = true)
             register(relative)
             require(!target.exists() || target.isDirectory) { "Conflit de dossier : $relative" }
+            val parent = target.parentFile ?: error("Dossier parent invalide")
+            ensureParentDirectories(parent)
             if (!target.exists()) {
-                require(target.mkdirs()) { "Création du dossier impossible : $relative" }
+                require(target.mkdir()) { "Création du dossier impossible : $relative" }
                 created.add(target)
             }
             entryCount++
@@ -517,19 +519,29 @@ internal object ArchiveEngine {
         }
 
         private fun ensureParentDirectories(parent: File) {
+            val canonicalParent = parent.canonicalFile
+            val rootPrefix = root.path.let { if (it.endsWith(File.separator)) it else it + File.separator }
+            require(canonicalParent.path == root.path || canonicalParent.path.startsWith(rootPrefix)) {
+                "Dossier parent hors destination"
+            }
+
             val missing = ArrayList<File>()
-            var cursor: File? = parent
-            while (cursor != null && cursor != root && !cursor.exists()) {
+            var cursor: File? = canonicalParent
+            while (cursor != null && cursor.path != root.path && !cursor.exists()) {
                 missing.add(cursor)
                 cursor = cursor.parentFile
             }
-            require(cursor == root || cursor == null) { "Dossier parent hors destination" }
-            require(missing.none { it.exists() && !it.isDirectory }) { "Conflit de type dans le chemin extrait" }
+            require(
+                cursor != null &&
+                    (cursor.path == root.path || cursor.path.startsWith(rootPrefix)) &&
+                    cursor.isDirectory
+            ) { "Dossier parent absent ou non répertoire dans la destination" }
+
             missing.asReversed().forEach { directory ->
                 require(directory.mkdirs() || directory.isDirectory) { "Création de dossier impossible" }
                 created.add(directory)
             }
-            require(parent.isDirectory) { "Dossier parent invalide" }
+            require(canonicalParent.isDirectory) { "Dossier parent invalide" }
         }
 
         fun rollback() {
