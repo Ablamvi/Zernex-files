@@ -19,8 +19,8 @@ android {
         applicationId = "com.zernex.files"
         minSdk = 23
         targetSdk = 36
-        versionCode = 1005
-        versionName = "1.0.4"
+        versionCode = 1100
+        versionName = "1.1.0"
         manifestPlaceholders["requestLegacyExternalStorage"] = "false"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
     }
@@ -34,15 +34,15 @@ android {
         create("play") {
             dimension = "distribution"
             targetSdk = 36
-            versionCode = 1005
+            versionCode = 1100
             buildConfigField("boolean", "LEGACY_STORAGE", "false")
             manifestPlaceholders["requestLegacyExternalStorage"] = "false"
         }
         create("android10Legacy") {
             dimension = "distribution"
             targetSdk = 29
-            versionCode = 1005
-            versionName = "1.0.4"
+            versionCode = 1100
+            versionName = "1.1.0"
             buildConfigField("boolean", "LEGACY_STORAGE", "true")
             manifestPlaceholders["requestLegacyExternalStorage"] = "true"
         }
@@ -87,6 +87,9 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.11.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
+    implementation("org.apache.commons:commons-compress:1.28.0")
+    implementation("org.tukaani:xz:1.12")
+    implementation("net.lingala.zip4j:zip4j:2.11.6")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
     implementation(platform("androidx.compose:compose-bom:2025.12.00"))
@@ -97,5 +100,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.foundation:foundation")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }
 
