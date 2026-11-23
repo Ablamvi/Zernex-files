@@ -69,6 +69,7 @@ for path in xml_files:
         xml_ok = False
         checks.append((f"XML {path.relative_to(ROOT)}", False, str(exc)))
 check("all Android XML parses", xml_ok, f"{len(xml_files)} fichiers")
+check("V2 user and capability documentation", all((ROOT / path).is_file() for path in ["docs/GUIDE_UTILISATION_FR_2.0.0.md", "docs/FEATURES_AND_LIMITS_2.0.0.md", "docs/V2_DESIGN_SYSTEM.md", "docs/OPEN_SOURCE_RESEARCH_V2.md"]))
 launcher_icon = (ROOT / "app/src/main/res/drawable/ic_zernex_files.xml").read_text(encoding="utf-8")
 check("launcher icon follows monochrome and yellow palette", "#0B0B0C" in launcher_icon and "#F4C542" in launcher_icon and "#6D8CFF" not in launcher_icon)
 check("V2 file categories and semantic accents", all(token in visuals for token in ["ZernexFileCategory", "MEDIA", "DOCUMENT", "ARCHIVE", "APPLICATION", "zernexAccentFor"]))
