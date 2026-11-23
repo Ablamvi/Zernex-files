@@ -1,6 +1,6 @@
 ZERNEX Files 2.0.0 — branche feature/zernex-files-v2
 
-État : refonte V2 implémentée sur branche dédiée ; PR draft à ouvrir après validation finale.
+État : refonte V2 implémentée sur branche dédiée ; PR brouillon #2 ouverte, non fusionnée.
 VersionName : 2.0.0
 VersionCode : 2000
 Branche : feature/zernex-files-v2
@@ -19,7 +19,7 @@ Fonctions :
 - Moteur d'archives local + SAF : aperçu, création ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ, extraction ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ/GZ/BZ2/XZ, mot de passe ZIP AES-256.
 - Extraction sécurisée, protections de chemins, liens et collisions ; limites d'entrées et de taille.
 
-Validation CI — workflow #93 :
+Validation CI — workflows #93 (push), #97 (push après documentation) et #98 (PR #2) :
 - Vérificateur statique : réussi.
 - Tests JVM : 13/13 réussis (ArchiveEngineTest 5, FileVisualsTest 6, SafArchiveBridgeTest 2).
 - lintPlayRelease : réussi.
