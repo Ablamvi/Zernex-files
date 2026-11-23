@@ -17,7 +17,7 @@ Légende : **Fonctionnel** = présent dans le code et vérifié par les tests au
 | Archives locales | Lire, créer, extraire ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2, TAR.XZ | Fonctionnel | RAR/RAR5 non pris en charge |
 | Compression | GZ, BZ2, XZ | Fonctionnel | Décompression simple |
 | Chiffrement archive | ZIP AES-256 | Fonctionnel | Chiffrement disponible uniquement pour ZIP |
-| Archives SAF | Parcourir, créer et extraire ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, GZ, BZ2 et XZ | Fonctionnel | Le fournisseur SAF doit autoriser la lecture et l’écriture ; extraction copiée via cache temporaire borné |
+| Archives SAF | Parcourir et extraire ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, GZ, BZ2 et XZ ; créer ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ | Fonctionnel | Le fournisseur SAF doit autoriser la lecture et l’écriture ; extraction copiée via cache temporaire borné |
 | Réseau | SFTP, SMB, FTP, WebDAV | Non inclus | À développer |
 | Multi-fenêtres | Onglets et double panneau | Non inclus | À développer |
 | Opérations | File persistante, pause/reprise en arrière-plan | Non inclus | À développer |
