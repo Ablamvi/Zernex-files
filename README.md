@@ -1,61 +1,48 @@
-# ZERNEX Files 1.1.0
+# ZERNEX Files 2.0.0
 
-Gestionnaire de fichiers Android avec navigation locale/SAF, opérations groupées, corbeille, outils intégrés et moteur d’archives multi-formats. Application locale : les fichiers ne sont pas envoyés vers un service ZERNEX.
+ZERNEX Files est un gestionnaire Android local, conçu pour naviguer, organiser, inspecter et manipuler les fichiers de l'appareil sans compte, publicité ni envoi automatique de fichiers.
 
-**Guide pas à pas :** docs/GUIDE_UTILISATION_FR_1.1.0.md  
-**Matrice stricte des capacités et limites :** docs/FEATURES_AND_LIMITS_1.1.0.md
+## Identité visuelle 2.0
 
-## Archives 1.1.0 — moteur local
+- Palette stricte : noir, graphite, gris et blanc ; trois accents sémantiques uniquement (rouge, vert, jaune).
+- Les icônes de dossiers et de types de fichiers sont prioritaires ; les libellés restent courts.
+- Rouge : médias et actions destructives. Vert : documents et états réussis. Jaune : archives, applications et action principale.
+- Aucun dégradé multicolore, aucune couleur bleue, violette, cyan ou orange dans l'explorateur.
+- Les mêmes règles visuelles s'appliquent au navigateur local et au navigateur SAF.
 
-- Lecture, création et extraction : ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ.
-- Décompression simple : GZ, BZ2 et XZ.
-- Création ZIP chiffrée AES-256 avec mot de passe d’au moins 8 caractères.
-- Mot de passe d’extraction ZIP et 7Z.
-- Aperçu des entrées et extraction dans un nouveau dossier.
-- Extraction sans écrasement, validation stricte des chemins, refus des liens/fichiers spéciaux, nettoyage des éléments partiels et plafonds anti-archive-bombe.
-- RAR/RAR5, ISO, CAB, ARJ, ZST, archives multi-volumes et édition en place ne sont pas pris en charge dans cette version.
+## Fonctions présentes dans la base 2.0
 
-Le moteur avancé d’archives est disponible dans le navigateur de stockage local. Le mode SAF conserve actuellement ses actions ZIP ; il n’y a pas encore de parité multi-format entre les deux moteurs.
+- Navigation locale et SAF, fil d'Ariane, recherche, filtres par catégorie, tri et vues liste/grille.
+- Sélection multiple, copier/couper/coller, renommage groupé, partage, corbeille et restauration.
+- Favoris, récents, propriétés, empreinte MD5, taille des dossiers et recherche de doublons.
+- Aperçus image, PDF, audio et vidéo ; éditeur texte.
+- Archives locales ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ ; décompression GZ/BZ2/XZ.
+- ZIP AES-256 facultatif ; extraction protégée contre les chemins traversants, liens et collisions.
 
 ## Variantes Android
 
-### play — distribution Google Play
-- targetSdk = 36.
-- Android 11+ : accès direct après activation explicite de **Gérer tous les fichiers** ; SAF reste disponible pour un dossier sélectionné.
-- Android 10 : accès SAF limité au dossier choisi. La variante moderne ne contourne pas le stockage cloisonné.
+- **Play** : targetSdk 36 ; Android 11+ avec accès étendu demandé explicitement ; SAF pour choisir un dossier.
+- **Android 10 Legacy** : targetSdk 29, destinée à la distribution directe ; accès selon les permissions Android 10.
+- minSdk 23 ; JDK 17 ; Android SDK API 36.
 
-### android10Legacy — APK de distribution directe
-- targetSdk = 29, requestLegacyExternalStorage=true.
-- Destinée à Android 10 uniquement et à la distribution hors Google Play.
-- Accès direct après autorisations classiques.
+## Compilation et tests
 
-## Compilation
+```bash
+./gradlew :app:testPlayDebugUnitTest
+./gradlew :app:lintPlayRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
+```
 
-Environnement requis : JDK 17, Android SDK API 36 et Build Tools 36.0.0.
+Les APK sont générés dans `app/build/outputs/apk/play/release/` et `app/build/outputs/apk/android10Legacy/release/`.
 
-- Tests unitaires : ./gradlew :app:testPlayDebugUnitTest
-- Lint et deux compilations : ./gradlew :app:lintPlayRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
+La signature Release est fournie par les secrets du dépôt. Le certificat doit rester identique entre les mises à jour. Ne jamais commiter le keystore.
 
-Les APK sont générés sous app/build/outputs/apk/play/release/ et app/build/outputs/apk/android10Legacy/release/.
+## Fonctions non déclarées comme terminées
 
-La signature Release est optionnelle localement et fournie par les variables ZERNEX_KEYSTORE_FILE, ZERNEX_KEYSTORE_PASSWORD, ZERNEX_KEY_ALIAS, ZERNEX_KEY_PASSWORD. Conserver le certificat privé d’origine pour les mises à jour ; ne jamais commiter le keystore.
+Les onglets persistants, double panneau, gestionnaire de tâches avec pause/reprise, parité d'archives SAF, RAR/RAR5, ISO, SFTP/SMB/WebDAV, Shizuku/root, coffre chiffré, éditeur hexadécimal, gestionnaire d'APK avancé et installation XAPK ne sont pas inclus dans la version 2.0.0 de cette branche. Ils nécessitent des implémentations et tests dédiés.
 
-## Fonctionnalités déjà intégrées
-
-- Navigation, fil d’Ariane, recherche simple/avancée, tri, filtres et dossiers cachés.
-- Favoris, récents, dossier de démarrage, vues liste/grille.
-- Sélection multiple, renommage groupé, copier/couper/coller, partage et gestion des collisions.
-- Création de fichiers/dossiers, éditeur texte, corbeille et restauration.
-- Aperçus image, PDF, audio et vidéo.
-- Propriétés, MD5, taille des dossiers, recherche de doublons, inspection de certificats et keystores.
-- Navigateur SAF avec favoris, recherche, opérations de documents, corbeille, propriétés, éditeur et ZIP selon les capacités du fournisseur.
-
-## Limites connues
-
-Onglets, double panneau, transfert persistant avec pause/reprise, réseau SFTP/SMB/WebDAV, Shizuku/root, RAR/RAR5 et parité multi-format SAF ne sont pas encore intégrés. Les restrictions Android sur les données privées et les emplacements système restent applicables.
-
-## Qualité et validation
-
-La CI exécute le vérificateur statique, les tests unitaires du moteur d’archives, le lint Play et les deux compilations Release. La réussite de la CI ne remplace pas les essais manuels sur Android 10, Android 11+, carte SD et stockage USB.
-
-Voir également CHANGELOG.md, docs/TEST_PLAN_1.0.1.md et docs/THIRD_PARTY_NOTICES.md.
+Voir :
+- [Guide utilisateur](docs/GUIDE_UTILISATION_FR_1.1.0.md)
+- [Matrice des fonctions et limites](docs/FEATURES_AND_LIMITS_1.1.0.md)
+- [Système de design 2.0](docs/V2_DESIGN_SYSTEM.md)
+- [Recherche open source et licences](docs/OPEN_SOURCE_RESEARCH_V2.md)
+- [Notices des composants tiers](docs/THIRD_PARTY_NOTICES.md)
