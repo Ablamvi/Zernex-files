@@ -179,7 +179,9 @@ internal object ArchiveEngine {
     }
 
     private fun createZip(sources: List<File>, target: File, password: String?) {
-        val zip = Zip4jOutputStream(FileOutputStream(target), password?.takeIf { it.isNotEmpty() }?.toCharArray())
+        val rawOutput = FileOutputStream(target)
+        val zip = password?.takeIf { it.isNotEmpty() }?.let { Zip4jOutputStream(rawOutput, it.toCharArray()) }
+            ?: Zip4jOutputStream(rawOutput)
         val names = HashSet<String>()
         var visited = 0
         var sourceBytes = 0L
@@ -195,14 +197,15 @@ internal object ArchiveEngine {
                 }
                 val key = entryName.lowercase(Locale.ROOT)
                 require(names.add(key)) { "Nom en double dans la sélection : $entryName" }
+                val encryptEntry = !password.isNullOrEmpty() && file.isFile
                 val parameters = ZipParameters().apply {
-                    fileNameInZip = if (file.isDirectory) "$entryName/" else entryName
-                    compressionMethod = CompressionMethod.DEFLATE
-                    compressionLevel = CompressionLevel.NORMAL
-                    isEncryptFiles = !password.isNullOrEmpty() && file.isFile
-                    if (isEncryptFiles) {
-                        encryptionMethod = EncryptionMethod.AES
-                        aesKeyStrength = AesKeyStrength.KEY_STRENGTH_256
+                    setFileNameInZip(if (file.isDirectory) "$entryName/" else entryName)
+                    setCompressionMethod(CompressionMethod.DEFLATE)
+                    setCompressionLevel(CompressionLevel.NORMAL)
+                    setEncryptFiles(encryptEntry)
+                    if (encryptEntry) {
+                        setEncryptionMethod(EncryptionMethod.AES)
+                        setAesKeyStrength(AesKeyStrength.KEY_STRENGTH_256)
                     }
                 }
                 output.putNextEntry(parameters)
