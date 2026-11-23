@@ -914,19 +914,27 @@ private fun SafFileIcon(entry: SafEntry, size: androidx.compose.ui.unit.Dp) {
         else -> Icons.Default.InsertDriveFile
     }
     Box(
-        Modifier.size(size).clip(RoundedCornerShape(14.dp))
-            .background(androidx.compose.ui.graphics.Brush.linearGradient(
-                listOf(accent.copy(alpha = 0.25f), accent.copy(alpha = 0.08f), MaterialTheme.colorScheme.surfaceVariant)
-            ))
-            .border(1.dp, accent.copy(alpha = 0.34f), RoundedCornerShape(14.dp)),
+        Modifier.size(size).clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(
+                1.dp,
+                if (entry.isDirectory) MaterialTheme.colorScheme.outlineVariant else accent.copy(alpha = 0.42f),
+                RoundedCornerShape(12.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
             contentDescription = if (entry.isDirectory) "Dossier" else "Fichier",
-            tint = accent,
+            tint = if (entry.isDirectory) MaterialTheme.colorScheme.onSurface else accent,
             modifier = Modifier.size(size * 0.62f)
         )
+        if (!entry.isDirectory) {
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(5.dp)
+                    .size(6.dp).background(accent, RoundedCornerShape(50))
+            )
+        }
     }
 }
 
