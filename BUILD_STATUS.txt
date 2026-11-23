@@ -1,28 +1,40 @@
 ZERNEX Files 2.0.0 — branche feature/zernex-files-v2
 
-État de développement : en cours de validation CI.
+État : refonte V2 implémentée sur branche dédiée ; PR draft à ouvrir après validation finale.
 VersionName : 2.0.0
 VersionCode : 2000
-Branche de travail : feature/zernex-files-v2
+Branche : feature/zernex-files-v2
 Base : feature/pro-archives-1.1.0
 
-Refonte déjà intégrée :
+Refonte :
 - Thème noir/graphite/blanc et accents stricts rouge/vert/jaune.
-- Icônes de fichiers sur fonds neutres ; suppression des dégradés multicolores.
-- Catégories de fichiers centralisées et testées.
-- Raccourcis visuels de catégories dans les navigateurs local et SAF.
-- Navigation inférieure par icônes et tableau Outils en tuiles.
-- Icône de lancement et barres système harmonisées.
-- Documentation de conception, recherche open source et licences.
+- Icônes de fichiers sur fonds neutres ; aucun dégradé multicolore dans les navigateurs.
+- Catégories centralisées et testées ; rail d'icônes local + SAF.
+- Navigation inférieure, page Outils en tuiles, marque et icône de lancement harmonisées.
+- Documentation utilisateur, matrice des fonctions, design system et revue de licences.
 
-Fonctions héritées de 1.1.0 :
-- Gestion des fichiers locaux et SAF, sélection multiple, copie/déplacement, renommage groupé.
-- Corbeille, favoris, récents, recherche, tri, propriétés et doublons.
-- Aperçus médias et éditeur texte.
-- Moteur d’archives multi-format local + SAF : ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ et décompression GZ/BZ2/XZ ; création, aperçu, extraction, mot de passe ZIP AES-256.
-- ZIP AES-256 facultatif et extraction protégée.
+Fonctions :
+- Gestion fichiers local + SAF, sélection multiple, copie/déplacement, renommage, corbeille, favoris, récents, recherche, tri, propriétés, MD5 et doublons.
+- Aperçus médias/PDF et éditeur texte.
+- Moteur d'archives local + SAF : aperçu, création ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ, extraction ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ/GZ/BZ2/XZ, mot de passe ZIP AES-256.
+- Extraction sécurisée, protections de chemins, liens et collisions ; limites d'entrées et de taille.
 
-Validation :
-- Les tests et builds Android 2.0.0 doivent être confirmés par le workflow Actions de cette branche.
-- Les essais manuels sur appareils Android 10 et Android 11+ restent requis avant une publication stable.
-- Ne pas installer cette branche comme mise à jour de la version distribuée si le certificat de signature n'est pas identique.
+Validation CI — workflow #93 :
+- Vérificateur statique : réussi.
+- Tests JVM : 13/13 réussis (ArchiveEngineTest 5, FileVisualsTest 6, SafArchiveBridgeTest 2).
+- lintPlayRelease : réussi.
+- assemblePlayRelease : réussi.
+- assembleAndroid10LegacyRelease : réussi.
+- Artefacts Play et Android 10 Legacy générés (~3,68 Mo chacun).
+
+SIGNATURE :
+- Aucun secret de keystore Release configuré dans GitHub Actions.
+- Les APK Release générés par le workflow #93 sont NON SIGNÉS.
+- Ils ne peuvent pas mettre à jour une installation signée existante et ne sont pas des APK de production.
+- Ne pas publier avant configuration d'un keystore de distribution stable.
+
+À faire avant publication :
+- Configurer le keystore existant comme secrets GitHub ; ne jamais commiter le keystore.
+- Installer et tester sur appareil Android 10 et Android 11+.
+- Vérifier permissions, stockage amovible, SAF et parcours archives sur appareil réel.
+- Décider et développer RAR/RAR5, ISO, archives multi-volumes, double panneau, SFTP/SMB/WebDAV, file persistante, coffre et intégration Shizuku/root.
