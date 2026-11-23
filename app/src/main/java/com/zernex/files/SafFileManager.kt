@@ -440,7 +440,7 @@ fun SafFileManagerScreen(
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 10.dp, vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 46.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.FolderOpen, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(23.dp))
+            ZernexBrandMark()
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("ZERNEX Files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -509,6 +509,7 @@ fun SafFileManagerScreen(
                 }
             }
         }
+        ZernexCategoryRail(selected = category, onSelected = { category = it })
         if (searchOpen) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
                 value = query,
@@ -520,11 +521,6 @@ fun SafFileManagerScreen(
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = { IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, null) } }
             )
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Tous", "Images", "Vidéos", "Audio", "Documents", "Archives").forEach { item ->
-                    FilterChip(selected = category == item, onClick = { category = item }, label = { Text(item) })
-                }
-            }
             Text(
                 if (searchSubfolders) "Recherche dans les sous-dossiers activée (limite de 10 000 éléments par recherche)." else "Recherche dans le dossier courant.",
                 style = MaterialTheme.typography.labelSmall,
@@ -666,6 +662,15 @@ fun SafFileManagerScreen(
                     }
                 }
             }
+        }
+        if (selectedKeys.isEmpty()) {
+            ZernexSafBottomNavigation(
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+                onFiles = { dialog = "" },
+                onFavorites = { dialog = "favorites" },
+                onTrash = { dialog = "trashbin" },
+                onSettings = { dialog = "settings" }
+            )
         }
     }
 
