@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
@@ -208,6 +209,9 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
     var confirmReplace by remember { mutableStateOf(prefs.getBoolean("confirm_replace", true)) }
     var interactivePaste by remember { mutableStateOf(prefs.getBoolean("interactive_paste", true)) }
     var deleteAfterZip by remember { mutableStateOf(prefs.getBoolean("delete_after_zip", false)) }
+    var chosenArchiveFormat by remember { mutableStateOf(ArchiveFormat.ZIP) }
+    var archivePassword by remember { mutableStateOf("") }
+    var archiveFormatMenuExpanded by remember { mutableStateOf(false) }
     var openBehavior by remember { mutableStateOf(prefs.getString("open_behavior", "menu") ?: "menu") }
     var archiveDestination by remember { mutableStateOf(prefs.getString("archive_destination", "current") ?: "current") }
     var rememberLastFolder by remember { mutableStateOf(prefs.getBoolean("remember_last_folder", true)) }
@@ -943,18 +947,9 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                     TextButton(enabled = !busy && selectedLocalFiles.isNotEmpty(), onClick = { shareLocalFiles(context, selectedLocalFiles) }) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(4.dp)); Text("Partager") }
                     if (selectedLocalFiles.size == 1) TextButton(enabled = !busy, onClick = { propertiesFile = selectedLocalFiles.first() }) { Icon(Icons.Default.Info, null); Spacer(Modifier.width(4.dp)); Text("Détails") }
                     TextButton(enabled = !busy && clipboardPaths.isEmpty() && selectedLocalFiles.isNotEmpty(), onClick = {
-                        busy = true; operationLabel = "Création de l’archive…"; operationProgress = 0f
-                        val sources = selectedLocalFiles.toList()
-                        Thread {
-                            val result = runCatching { createZipArchive(sources, archiveOutputDirectory(currentDir, archiveDestination)) }
-                            Handler(Looper.getMainLooper()).post {
-                                busy = false
-                                val archiveMessage = result.fold({ "Archive créée : ${it.name}" }, { "Compression impossible : ${it.message}" })
-                                val preserved = if (deleteAfterZip && result.isSuccess) sources.filterNot { runCatching { moveToTrash(it, Environment.getExternalStorageDirectory()) }.getOrDefault(false) } else emptyList()
-                                message = if (preserved.isEmpty()) archiveMessage else "$archiveMessage • ${preserved.size} original(aux) conservé(s) : corbeille inaccessible"
-                                refreshNow()
-                            }
-                        }.start()
+                        chosenArchiveFormat = ArchiveFormat.ZIP
+                        archivePassword = ""
+                        dialog = "create_archive"
                     }) { Icon(Icons.Default.FolderZip, null); Spacer(Modifier.width(4.dp)); Text("Compresser") }
                 }
             }
@@ -962,6 +957,98 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
       }
 
     }
+
+    if (dialog == "create_archive") AlertDialog(
+        onDismissRequest = { dialog = ""; archivePassword = ""; archiveFormatMenuExpanded = false },
+        title = { Text("Créer une archive") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("${selectedLocalFiles.size} élément(s) seront compressés. Le fichier final sera créé dans le dossier de destination configuré.", style = MaterialTheme.typography.bodySmall)
+                Box {
+                    OutlinedButton(
+                        enabled = !busy,
+                        onClick = { archiveFormatMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Format : ${chosenArchiveFormat.label}", modifier = Modifier.weight(1f))
+                        Icon(Icons.Default.ExpandMore, contentDescription = "Choisir le format")
+                    }
+                    DropdownMenu(
+                        expanded = archiveFormatMenuExpanded,
+                        onDismissRequest = { archiveFormatMenuExpanded = false }
+                    ) {
+                        ArchiveFormat.values().forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label + option.extension) },
+                                onClick = {
+                                    chosenArchiveFormat = option
+                                    archiveFormatMenuExpanded = false
+                                    if (option != ArchiveFormat.ZIP) archivePassword = ""
+                                }
+                            )
+                        }
+                    }
+                }
+                if (chosenArchiveFormat == ArchiveFormat.ZIP) {
+                    OutlinedTextField(
+                        value = archivePassword,
+                        onValueChange = { archivePassword = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Mot de passe ZIP (facultatif)") },
+                        supportingText = { Text("Chiffrement AES-256. 8 caractères minimum si utilisé.") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                } else {
+                    Text("Ce format est créé sans mot de passe. Le chiffrement est actuellement disponible uniquement pour ZIP.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text("Les liens symboliques sont refusés. Aucun fichier existant ne sera remplacé.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !busy && selectedLocalFiles.isNotEmpty() &&
+                    (archivePassword.isBlank() || (chosenArchiveFormat == ArchiveFormat.ZIP && archivePassword.length >= 8)),
+                onClick = {
+                    val sources = selectedLocalFiles.toList()
+                    val format = chosenArchiveFormat
+                    val password = archivePassword.takeIf { it.isNotBlank() }
+                    dialog = ""
+                    archivePassword = ""
+                    busy = true
+                    operationLabel = "Création ${format.label}…"
+                    operationProgress = 0f
+                    Thread {
+                        val result = runCatching {
+                            ArchiveEngine.create(
+                                sources,
+                                archiveOutputDirectory(currentDir, archiveDestination),
+                                "ZERNEX_${System.currentTimeMillis()}",
+                                format,
+                                password
+                            )
+                        }
+                        Handler(Looper.getMainLooper()).post {
+                            busy = false
+                            val archiveMessage = result.fold(
+                                { "Archive ${format.label} créée : ${it.name}" },
+                                { "Compression impossible : ${it.message ?: "erreur inconnue"}" }
+                            )
+                            val preserved = if (deleteAfterZip && result.isSuccess) {
+                                sources.filterNot { runCatching { moveToTrash(it, Environment.getExternalStorageDirectory()) }.getOrDefault(false) }
+                            } else emptyList()
+                            message = if (preserved.isEmpty()) archiveMessage else "$archiveMessage • ${preserved.size} original(aux) conservé(s) : corbeille inaccessible"
+                            selected.clear()
+                            refreshNow()
+                        }
+                    }.start()
+                }
+            ) { Text("Créer") }
+        },
+        dismissButton = {
+            TextButton(onClick = { dialog = ""; archivePassword = ""; archiveFormatMenuExpanded = false }) { Text("Annuler") }
+        }
+    )
 
     if (dialog == "mkdir" || dialog == "rename" || dialog == "newtxt") AlertDialog(
         onDismissRequest = { dialog = "" },
@@ -1707,7 +1794,7 @@ private fun fileVisualIcon(file: File): androidx.compose.ui.graphics.vector.Imag
 private fun openFile(file: File, onPreview: () -> Unit, onEdit: () -> Unit) {
     when (file.extension.lowercase()) {
         "txt", "md", "json", "xml", "html", "htm", "css", "js", "ts", "kt", "java", "py", "sh", "yml", "yaml", "toml", "ini", "properties", "gradle", "sql", "c", "cpp", "h", "rs", "go", "dart", "php", "rb", "swift", "log", "conf" -> onEdit()
-        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "pdf", "mp4", "mkv", "webm", "mov", "mp3", "wav", "ogg", "flac", "m4a", "jks", "keystore", "jceks", "p12", "pfx", "bks", "pem", "crt", "cer", "der", "zip" -> onPreview()
+        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "pdf", "mp4", "mkv", "webm", "mov", "mp3", "wav", "ogg", "flac", "m4a", "jks", "keystore", "jceks", "p12", "pfx", "bks", "pem", "crt", "cer", "der", "zip", "7z", "tar", "tgz", "gz", "bz2", "xz", "tbz", "tbz2", "txz" -> onPreview()
         else -> onPreview()
     }
 }
@@ -1928,28 +2015,87 @@ private fun extractZipSafely(archive: File, destination: File) {
 }
 
 @Composable
-private fun ZipArchivePreview(file: File) {
+private fun ArchivePreview(file: File) {
     val scope = rememberCoroutineScope()
-    var entries by remember(file) { mutableStateOf<List<Pair<String, Long>>>(emptyList()) }
+    var entries by remember(file) { mutableStateOf<List<ArchiveEntryInfo>>(emptyList()) }
     var message by remember(file) { mutableStateOf("") }
     var loading by remember(file) { mutableStateOf(true) }
+    var extracting by remember(file) { mutableStateOf(false) }
+    var showExtractDialog by remember(file) { mutableStateOf(false) }
+    var password by remember(file) { mutableStateOf("") }
+
     LaunchedEffect(file) {
-        entries = withContext(Dispatchers.IO) { runCatching { ZipFile(file).use { zip -> zip.entries().asSequence().map { it.name to it.size }.toList() } }.getOrElse { message = "Archive illisible : ${it.message}"; emptyList() } }
+        val result = withContext(Dispatchers.IO) { runCatching { ArchiveEngine.list(file) } }
+        entries = result.getOrElse { message = "Lecture de l’archive impossible : ${it.message ?: "format invalide"}"; emptyList() }
         loading = false
     }
+
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Text("${entries.size} entrées", Modifier.weight(1f)); Button(enabled = !loading && message != "Extraction en cours…", onClick = {
-            val dest = File(file.parentFile, file.nameWithoutExtension)
-            message = "Extraction en cours…"
-            scope.launch {
-                val result = withContext(Dispatchers.IO) { runCatching { extractZipSafely(file, dest) } }
-                message = result.fold({ "Extraction terminée : ${dest.absolutePath}" }, { "Extraction impossible : ${it.message ?: "erreur inconnue"}" })
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("${entries.size} entrée(s)", style = MaterialTheme.typography.titleSmall)
+                Text("ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }) { Text(if (message == "Extraction en cours…") "Extraction…" else "Extraire ici") } }
+            Button(enabled = !loading && !extracting, onClick = { showExtractDialog = true }) {
+                Text(if (extracting) "Extraction…" else "Extraire ici")
+            }
+        }
         if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        LazyColumn { items(entries) { (name, size) -> ListItem(headlineContent = { Text(name, maxLines = 1) }, supportingContent = { Text(if (size >= 0) formatSize(size) else "Taille inconnue") }, leadingContent = { Icon(if (name.endsWith("/")) Icons.Default.Folder else Icons.Default.InsertDriveFile, null) }) } }
+        if (loading || extracting) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (!loading && entries.isEmpty() && message.isBlank()) {
+            ZernexEmptyState("Archive vide", "Aucun élément n’a été trouvé dans cette archive.") {
+                Icon(Icons.Default.FolderZip, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
+            }
+        }
+        LazyColumn {
+            items(entries, key = { it.name }) { entry ->
+                ListItem(
+                    headlineContent = { Text(entry.name, maxLines = 1) },
+                    supportingContent = { Text(if (entry.isDirectory) "Dossier" else if (entry.size >= 0) formatSize(entry.size) else "Taille inconnue") },
+                    leadingContent = { Icon(if (entry.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile, null) }
+                )
+            }
+        }
     }
+
+    if (showExtractDialog) AlertDialog(
+        onDismissRequest = { if (!extracting) showExtractDialog = false },
+        title = { Text("Extraire l’archive") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Les éléments seront extraits dans un nouveau dossier nommé d’après l’archive. Les fichiers existants ne seront jamais écrasés.")
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Mot de passe (si requis)") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Text("Limites de sécurité : 10 000 entrées, 256 Mio par fichier et 512 Mio au total.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !extracting, onClick = {
+                showExtractDialog = false
+                extracting = true
+                val secret = password.takeIf { it.isNotBlank() }
+                val suffix = listOf(".tar.bz2", ".tar.gz", ".tar.xz", ".tbz2", ".tgz", ".txz").firstOrNull { file.name.endsWith(it, true) }
+                val folderName = if (suffix != null) file.name.dropLast(suffix.length) else file.name.substringBeforeLast('.', file.name)
+                val target = File(file.parentFile ?: file.absoluteFile.parentFile!!, folderName.ifBlank { "Archive extraite" })
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) { runCatching { ArchiveEngine.extractSafely(file, target, secret) } }
+                    extracting = false
+                    message = result.fold(
+                        { "Extraction terminée : $it élément(s) dans ${target.absolutePath}" },
+                        { "Extraction impossible : ${it.message ?: "erreur inconnue"}" }
+                    )
+                    password = ""
+                }
+            }) { Text("Extraire") }
+        },
+        dismissButton = { TextButton(enabled = !extracting, onClick = { showExtractDialog = false; password = "" }) { Text("Annuler") } }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1978,7 +2124,7 @@ private fun FilePreviewScreen(file: File, onClose: () -> Unit) {
                 "mp3", "wav", "ogg", "flac", "m4a" -> AudioFilePreview(file)
                 "jks", "keystore", "jceks", "p12", "pfx", "bks" -> KeystoreFilePreview(file)
                 "pem", "crt", "cer", "der" -> CertificateFilePreview(file)
-                "zip" -> ZipArchivePreview(file)
+                "zip", "7z", "tar", "tgz", "gz", "bz2", "xz", "tbz", "tbz2", "txz" -> ArchivePreview(file)
                 else -> {
                     val context = LocalContext.current
                     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
