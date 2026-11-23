@@ -665,7 +665,7 @@ fun SafFileManagerScreen(
         }
         if (selectedKeys.isEmpty()) {
             ZernexSafBottomNavigation(
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+                modifier = Modifier.fillMaxWidth(),
                 onFiles = { dialog = "" },
                 onFavorites = { dialog = "favorites" },
                 onTrash = { dialog = "trashbin" },
