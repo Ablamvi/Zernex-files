@@ -41,8 +41,8 @@ La signature Release est fournie par les secrets du dépôt. Le certificat doit 
 Les onglets persistants, double panneau, gestionnaire de tâches avec pause/reprise, parité d'archives SAF, RAR/RAR5, ISO, SFTP/SMB/WebDAV, Shizuku/root, coffre chiffré, éditeur hexadécimal, gestionnaire d'APK avancé et installation XAPK ne sont pas inclus dans la version 2.0.0 de cette branche. Ils nécessitent des implémentations et tests dédiés.
 
 Voir :
-- [Guide utilisateur](docs/GUIDE_UTILISATION_FR_1.1.0.md)
-- [Matrice des fonctions et limites](docs/FEATURES_AND_LIMITS_1.1.0.md)
+- [Guide utilisateur](docs/GUIDE_UTILISATION_FR_2.0.0.md)
+- [Matrice des fonctions et limites](docs/FEATURES_AND_LIMITS_2.0.0.md)
 - [Système de design 2.0](docs/V2_DESIGN_SYSTEM.md)
 - [Recherche open source et licences](docs/OPEN_SOURCE_RESEARCH_V2.md)
 - [Notices des composants tiers](docs/THIRD_PARTY_NOTICES.md)
