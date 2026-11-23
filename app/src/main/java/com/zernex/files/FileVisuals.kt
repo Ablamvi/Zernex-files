@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ContentCopy
@@ -132,7 +133,7 @@ internal fun ZernexBottomNavigation(
 ) {
     NavigationBar(modifier = modifier, containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, tonalElevation = 0.dp) {
         NavigationBarItem(selected = true, onClick = onFiles, icon = { Icon(Icons.Default.FolderOpen, contentDescription = "Fichiers") }, label = { Text("Fichiers", fontSize = 10.sp) })
-        NavigationBarItem(selected = false, onClick = onRecent, icon = { Icon(Icons.Default.Image, contentDescription = "Récents") }, label = { Text("Récents", fontSize = 10.sp) })
+        NavigationBarItem(selected = false, onClick = onRecent, icon = { Icon(Icons.Default.History, contentDescription = "Récents") }, label = { Text("Récents", fontSize = 10.sp) })
         NavigationBarItem(selected = false, onClick = onFavorites, icon = { Icon(Icons.Default.FolderSpecial, contentDescription = "Favoris") }, label = { Text("Favoris", fontSize = 10.sp) })
         NavigationBarItem(selected = false, onClick = onTools, icon = { Icon(Icons.Default.Settings, contentDescription = "Outils") }, label = { Text("Outils", fontSize = 10.sp) })
     }
@@ -171,5 +172,21 @@ private fun ZernexToolCard(modifier: Modifier, label: String, icon: ImageVector,
             }
             Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
         }
+    }
+}
+
+@Composable
+internal fun ZernexSafBottomNavigation(
+    modifier: Modifier = Modifier,
+    onFiles: () -> Unit,
+    onFavorites: () -> Unit,
+    onTrash: () -> Unit,
+    onSettings: () -> Unit
+) {
+    NavigationBar(modifier = modifier, containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, tonalElevation = 0.dp) {
+        NavigationBarItem(selected = true, onClick = onFiles, icon = { Icon(Icons.Default.FolderOpen, contentDescription = "Fichiers") }, label = { Text("Fichiers", fontSize = 10.sp) })
+        NavigationBarItem(selected = false, onClick = onFavorites, icon = { Icon(Icons.Default.FolderSpecial, contentDescription = "Favoris") }, label = { Text("Favoris", fontSize = 10.sp) })
+        NavigationBarItem(selected = false, onClick = onTrash, icon = { Icon(Icons.Default.DeleteSweep, contentDescription = "Corbeille") }, label = { Text("Corbeille", fontSize = 10.sp) })
+        NavigationBarItem(selected = false, onClick = onSettings, icon = { Icon(Icons.Default.Settings, contentDescription = "Paramètres") }, label = { Text("Réglages", fontSize = 10.sp) })
     }
 }
