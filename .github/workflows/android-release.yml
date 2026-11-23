@@ -73,6 +73,17 @@ jobs:
             :app:assemblePlayRelease \
             :app:assembleAndroid10LegacyRelease
 
+      - name: Upload unit test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZERNEX-Files-1.1.0-test-reports
+          path: |
+            app/build/reports/tests/testPlayDebugUnitTest/
+            app/build/test-results/testPlayDebugUnitTest/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload Play APK
         uses: actions/upload-artifact@v4
         with:
