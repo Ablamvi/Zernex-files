@@ -16,7 +16,7 @@ ZERNEX Files est un gestionnaire Android local, conçu pour naviguer, organiser,
 - Sélection multiple, copier/couper/coller, renommage groupé, partage, corbeille et restauration.
 - Favoris, récents, propriétés, empreinte MD5, taille des dossiers et recherche de doublons.
 - Aperçus image, PDF, audio et vidéo ; éditeur texte.
-- Archives locales ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ ; décompression GZ/BZ2/XZ.
+- Archives ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ dans les navigateurs local et SAF ; aperçu, création et extraction ; décompression GZ/BZ2/XZ.
 - ZIP AES-256 facultatif ; extraction protégée contre les chemins traversants, liens et collisions.
 
 ## Variantes Android
@@ -38,7 +38,7 @@ La signature Release est fournie par les secrets du dépôt. Le certificat doit 
 
 ## Fonctions non déclarées comme terminées
 
-Les onglets persistants, double panneau, gestionnaire de tâches avec pause/reprise, parité d'archives SAF, RAR/RAR5, ISO, SFTP/SMB/WebDAV, Shizuku/root, coffre chiffré, éditeur hexadécimal, gestionnaire d'APK avancé et installation XAPK ne sont pas inclus dans la version 2.0.0 de cette branche. Ils nécessitent des implémentations et tests dédiés.
+Les onglets persistants, double panneau, gestionnaire de tâches avec pause/reprise, RAR/RAR5, ISO, SFTP/SMB/WebDAV, Shizuku/root, coffre chiffré, éditeur hexadécimal, gestionnaire d'APK avancé et installation XAPK ne sont pas inclus dans la version 2.0.0 de cette branche. Ils nécessitent des implémentations et tests dédiés.
 
 Voir :
 - [Guide utilisateur](docs/GUIDE_UTILISATION_FR_2.0.0.md)
