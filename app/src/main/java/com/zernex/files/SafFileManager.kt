@@ -1385,114 +1385,236 @@ private fun calculateSafDetails(context: Context, document: DocumentFile): SafDe
 
 private data class SafZipBudget(var entries: Int = 0, var bytes: Long = 0L)
 
-private fun createSafZip(context: Context, sources: List<DocumentFile>, targetParent: DocumentFile): DocumentFile {
-    if (sources.isEmpty()) error("Aucun élément sélectionné")
-    val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).format(Date())
-    val archiveName = uniqueSafName(targetParent, "ZERNEX_$stamp.zip")
-    val archive = targetParent.createFile("application/zip", archiveName) ?: error("Création de l'archive impossible")
-    val budget = SafZipBudget()
-    try {
-        val output = context.contentResolver.openOutputStream(archive.uri, "w") ?: error("Écriture de l'archive impossible")
-        ZipOutputStream(BufferedOutputStream(output)).use { zip ->
-            fun add(document: DocumentFile, archivePath: String, depth: Int) {
-                if (depth > 64) error("Arborescence trop profonde")
-                budget.entries++
-                if (budget.entries > 10000) error("Archive trop volumineuse : plus de 10 000 éléments")
-                if (document.isDirectory) {
-                    val normalized = archivePath.trimEnd('/') + "/"
-                    zip.putNextEntry(ZipEntry(normalized))
-                    zip.closeEntry()
-                    val children = document.listFiles().sortedBy { it.name?.lowercase(Locale.ROOT) ?: "" }
-                    children.forEach { child -> add(child, "$normalized${child.name ?: "Sans nom"}", depth + 1) }
-                } else {
-                    zip.putNextEntry(ZipEntry(archivePath))
-                    val input = context.contentResolver.openInputStream(document.uri) ?: error("Lecture impossible : ${document.name}")
-                    input.use { stream ->
-                        val buffer = ByteArray(32 * 1024)
-                        var fileBytes = 0L
-                        while (true) {
-                            val count = stream.read(buffer)
-                            if (count < 0) break
-                            fileBytes += count
-                            budget.bytes += count
-                            if (fileBytes > 256L * 1024 * 1024 || budget.bytes > 512L * 1024 * 1024) {
-                                error("Limite de taille de l'archive dépassée")
-                            }
-                            zip.write(buffer, 0, count)
-                        }
-                    }
-                    zip.closeEntry()
+
+private data class SafArchiveBridgeBudget(var entries: Int = 0, var bytes: Long = 0L)
+
+private const val SAF_ARCHIVE_MAX_SOURCE_ENTRIES = 50_000
+private const val SAF_ARCHIVE_MAX_SOURCE_BYTES = 8L * 1024L * 1024L * 1024L
+private const val SAF_ARCHIVE_MAX_EXTRACT_ENTRIES = 10_000
+private const val SAF_ARCHIVE_MAX_EXTRACT_BYTES = 512L * 1024L * 1024L
+
+private fun newSafArchiveWorkDir(context: Context): File {
+    val parent = File(context.cacheDir, "zernex-saf-archive-work")
+    if (!parent.exists() && !parent.mkdirs()) error("Cache d'archives SAF indisponible")
+    val work = File(parent, "job-${System.nanoTime()}")
+    if (!work.mkdirs()) error("Impossible de créer le dossier temporaire d'archive")
+    return work
+}
+
+private fun isSafeArchiveLeafName(name: String): Boolean =
+    name.isNotBlank() && name !in setOf(".", "..") &&
+        !name.contains('/') && !name.contains('\\') &&
+        !name.contains(':') && !name.contains('\u0000')
+
+private fun uniqueLocalArchiveName(parent: File, requested: String): String {
+    if (!File(parent, requested).exists()) return requested
+    val extension = requested.substringAfterLast('.', "").takeIf { it.isNotEmpty() && !requested.endsWith('.') }
+    val base = if (extension == null) requested else requested.removeSuffix(".$extension")
+    var index = 1
+    while (index < 10000) {
+        val candidate = if (extension == null) "$base ($index)" else "$base ($index).$extension"
+        if (!File(parent, candidate).exists()) return candidate
+        index++
+    }
+    error("Trop de fichiers portent un nom similaire")
+}
+
+private fun archiveBaseName(name: String): String {
+    val lower = name.lowercase(Locale.ROOT)
+    val suffix = listOf(".tar.bz2", ".tar.gz", ".tar.xz", ".tbz2", ".tbz", ".tgz", ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz")
+        .firstOrNull { lower.endsWith(it) }
+    val base = if (suffix != null) name.dropLast(suffix.length) else name.substringBeforeLast('.', name)
+    return base.ifBlank { "Archive" }
+}
+
+private fun copySafSourceToLocal(
+    context: Context,
+    source: DocumentFile,
+    target: File,
+    budget: SafArchiveBridgeBudget,
+    depth: Int = 0
+) {
+    require(depth <= 64) { "Arborescence SAF trop profonde" }
+    require(source.exists() && source.canRead()) { "Lecture SAF refusée : ${source.name ?: "élément"}" }
+    val name = source.name ?: error("Un élément SAF n'a pas de nom")
+    require(isSafeArchiveLeafName(name)) { "Nom de fichier SAF invalide" }
+    budget.entries++
+    require(budget.entries <= SAF_ARCHIVE_MAX_SOURCE_ENTRIES) { "Trop d'éléments à compresser" }
+
+    if (source.isDirectory) {
+        require(target.mkdir()) { "Création temporaire impossible : $name" }
+        source.listFiles().sortedBy { it.name?.lowercase(Locale.ROOT) ?: "" }.forEach { child ->
+            val childName = child.name ?: error("Un élément SAF n'a pas de nom")
+            val safeChild = uniqueLocalArchiveName(target, childName)
+            copySafSourceToLocal(context, child, File(target, safeChild), budget, depth + 1)
+        }
+    } else {
+        require(source.isFile) { "Type SAF non pris en charge : $name" }
+        require(target.createNewFile()) { "Création temporaire impossible : $name" }
+        val input = context.contentResolver.openInputStream(source.uri) ?: error("Lecture impossible : $name")
+        input.use { stream ->
+            target.outputStream().use { output ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    budget.bytes += count
+                    require(budget.bytes <= SAF_ARCHIVE_MAX_SOURCE_BYTES) { "Sélection trop volumineuse pour être compressée" }
+                    output.write(buffer, 0, count)
                 }
             }
-            sources.forEach { source -> add(source, source.name ?: "Sans nom", 0) }
         }
-        return archive
-    } catch (error: Exception) {
-        deleteSafTree(archive)
-        throw error
     }
 }
 
-private fun extractSafZip(context: Context, archive: DocumentFile, targetParent: DocumentFile): Int {
+private fun copyLocalExtractedToSaf(
+    context: Context,
+    source: File,
+    targetParent: DocumentFile,
+    budget: SafArchiveBridgeBudget,
+    depth: Int = 0
+) {
+    require(depth <= 64) { "Arborescence extraite trop profonde" }
+    require(source.exists() && source.canonicalFile == source.absoluteFile) { "Lien ou chemin local interdit" }
+    val name = source.name
+    require(isSafeArchiveLeafName(name)) { "Nom extrait invalide" }
+    budget.entries++
+    require(budget.entries <= SAF_ARCHIVE_MAX_EXTRACT_ENTRIES) { "Trop d'éléments à copier vers SAF" }
+
+    if (source.isDirectory) {
+        val target = targetParent.createDirectory(name) ?: error("Création SAF impossible : $name")
+        source.listFiles()?.sortedBy { it.name.lowercase(Locale.ROOT) }?.forEach { child ->
+            copyLocalExtractedToSaf(context, child, target, budget, depth + 1)
+        }
+    } else {
+        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(source.extension.lowercase(Locale.ROOT))
+            ?: "application/octet-stream"
+        val target = targetParent.createFile(mime, name) ?: error("Création SAF impossible : $name")
+        try {
+            source.inputStream().use { input ->
+                val output = context.contentResolver.openOutputStream(target.uri, "w") ?: error("Écriture SAF impossible : $name")
+                output.use { stream ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        budget.bytes += count
+                        require(budget.bytes <= SAF_ARCHIVE_MAX_EXTRACT_BYTES) { "Limite de copie SAF dépassée" }
+                        stream.write(buffer, 0, count)
+                    }
+                }
+            }
+        } catch (error: Exception) {
+            target.delete()
+            throw error
+        }
+    }
+}
+
+private fun deleteSafArchiveTree(document: DocumentFile) {
+    if (document.isDirectory) document.listFiles().forEach { child ->
+        runCatching { deleteSafArchiveTree(child) }
+    }
+    document.delete()
+}
+
+private fun copySafArchiveToLocal(context: Context, archive: DocumentFile, work: File): File {
+    require(archive.exists() && archive.isFile && archive.canRead()) { "Archive SAF illisible" }
+    val name = archive.name ?: error("Archive sans nom")
+    require(isSafeArchiveLeafName(name)) { "Nom d'archive SAF invalide" }
+    val local = File(work, name)
     val input = context.contentResolver.openInputStream(archive.uri) ?: error("Lecture de l'archive impossible")
-    val created = mutableListOf<DocumentFile>()
-    val budget = SafZipBudget()
-    try {
-        ZipInputStream(BufferedInputStream(input)).use { zip ->
+    input.use { stream ->
+        local.outputStream().use { output ->
+            val buffer = ByteArray(64 * 1024)
+            var total = 0L
             while (true) {
-                val entry = zip.nextEntry ?: break
-                budget.entries++
-                if (budget.entries > 10000) error("Archive refusée : plus de 10 000 éléments")
-                val rawName = entry.name
-                if (rawName.isBlank() || rawName.startsWith('/') || rawName.startsWith('\\') || rawName.contains('\\') || rawName.contains('\u0000') || rawName.contains(':')) {
-                    error("Chemin interdit dans l'archive")
-                }
-                val parts = rawName.split('/').filter { it.isNotEmpty() }
-                if (parts.isEmpty() || parts.any { it == "." || it == ".." }) error("Chemin dangereux dans l'archive")
-                var parent = targetParent
-                val directoryParts = if (entry.isDirectory) parts else parts.dropLast(1)
-                for (part in directoryParts) {
-                    val existing = parent.findFile(part)
-                    parent = when {
-                        existing == null -> (parent.createDirectory(part) ?: error("Création du dossier $part impossible")).also { created.add(it) }
-                        existing.isDirectory -> existing
-                        else -> error("Conflit de type pour le dossier $part")
-                    }
-                }
-                if (!entry.isDirectory) {
-                    val requestedName = parts.last()
-                    val safeName = uniqueSafName(parent, requestedName)
-                    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(requestedName.substringAfterLast('.', "").lowercase()) ?: "application/octet-stream"
-                    val target = parent.createFile(mime, safeName) ?: error("Création du fichier $safeName impossible")
-                    created.add(target)
-                    try {
-                        val output = context.contentResolver.openOutputStream(target.uri, "w") ?: error("Écriture de $safeName impossible")
-                        output.use { stream ->
-                            val buffer = ByteArray(32 * 1024)
-                            var fileBytes = 0L
-                            while (true) {
-                                val count = zip.read(buffer)
-                                if (count < 0) break
-                                fileBytes += count
-                                budget.bytes += count
-                                if (fileBytes > 256L * 1024 * 1024 || budget.bytes > 512L * 1024 * 1024) {
-                                    error("Limite d'extraction dépassée")
-                                }
-                                stream.write(buffer, 0, count)
-                            }
-                        }
-                    } catch (error: Exception) {
-                        deleteSafTree(target)
-                        throw error
-                    }
-                }
-                zip.closeEntry()
+                val count = stream.read(buffer)
+                if (count < 0) break
+                total += count
+                require(total <= SAF_ARCHIVE_MAX_SOURCE_BYTES) { "Archive trop volumineuse pour le cache temporaire" }
+                output.write(buffer, 0, count)
             }
         }
-        return budget.entries
+    }
+    return local
+}
+
+private fun inspectSafArchive(context: Context, archive: DocumentFile): List<ArchiveEntryInfo> {
+    val work = newSafArchiveWorkDir(context)
+    return try {
+        ArchiveEngine.list(copySafArchiveToLocal(context, archive, work))
+    } finally {
+        work.deleteRecursively()
+    }
+}
+
+private fun extractSafArchive(
+    context: Context,
+    archive: DocumentFile,
+    targetParent: DocumentFile,
+    password: String? = null
+): Int {
+    val work = newSafArchiveWorkDir(context)
+    var targetRoot: DocumentFile? = null
+    try {
+        val localArchive = copySafArchiveToLocal(context, archive, work)
+        val extracted = File(work, "extracted")
+        val count = ArchiveEngine.extractSafely(localArchive, extracted, password)
+        val targetName = uniqueSafName(targetParent, archiveBaseName(archive.name ?: localArchive.name))
+        targetRoot = targetParent.createDirectory(targetName) ?: error("Création du dossier d'extraction impossible")
+        val budget = SafArchiveBridgeBudget()
+        extracted.listFiles()?.sortedBy { it.name.lowercase(Locale.ROOT) }?.forEach { child ->
+            copyLocalExtractedToSaf(context, child, targetRoot!!, budget)
+        }
+        return count
     } catch (error: Exception) {
-        created.asReversed().forEach { runCatching { deleteSafTree(it) } }
+        targetRoot?.let { runCatching { deleteSafArchiveTree(it) } }
         throw error
+    } finally {
+        work.deleteRecursively()
+    }
+}
+
+private fun createSafArchive(
+    context: Context,
+    sources: List<DocumentFile>,
+    targetParent: DocumentFile,
+    format: ArchiveFormat,
+    password: String? = null
+): DocumentFile {
+    require(sources.isNotEmpty()) { "Sélectionne au moins un fichier ou dossier" }
+    val work = newSafArchiveWorkDir(context)
+    var targetArchive: DocumentFile? = null
+    try {
+        val inputDirectory = File(work, "sources")
+        require(inputDirectory.mkdir()) { "Dossier temporaire des sources indisponible" }
+        val budget = SafArchiveBridgeBudget()
+        val localSources = sources.map { source ->
+            val requestedName = source.name ?: error("Source SAF sans nom")
+            require(isSafeArchiveLeafName(requestedName)) { "Nom de source SAF invalide" }
+            val localName = uniqueLocalArchiveName(inputDirectory, requestedName)
+            File(inputDirectory, localName).also { copySafSourceToLocal(context, source, it, budget) }
+        }
+        val outputDirectory = File(work, "output")
+        require(outputDirectory.mkdir()) { "Dossier temporaire de sortie indisponible" }
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).format(Date())
+        val archiveFile = ArchiveEngine.create(localSources, outputDirectory, "ZERNEX_$stamp", format, password)
+        val targetName = uniqueSafName(targetParent, archiveFile.name)
+        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(archiveFile.extension.lowercase(Locale.ROOT))
+            ?: "application/octet-stream"
+        targetArchive = targetParent.createFile(mime, targetName) ?: error("Création de l'archive SAF impossible")
+        archiveFile.inputStream().use { input ->
+            val output = context.contentResolver.openOutputStream(targetArchive!!.uri, "w")
+                ?: error("Écriture de l'archive SAF impossible")
+            output.use { input.copyTo(it, 64 * 1024) }
+        }
+        return targetArchive!!
+    } catch (error: Exception) {
+        targetArchive?.let { runCatching { it.delete() } }
+        throw error
+    } finally {
+        work.deleteRecursively()
     }
 }
 
