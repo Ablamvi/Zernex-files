@@ -1,4 +1,4 @@
-name: ZERNEX Files 1.1.0 - Android validation
+name: ZERNEX Files 2.0.0 - Android validation
 
 on:
   workflow_dispatch:
@@ -77,7 +77,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ZERNEX-Files-1.1.0-test-reports
+          name: ZERNEX-Files-2.0.0-test-reports
           path: |
             app/build/reports/tests/testPlayDebugUnitTest/
             app/build/test-results/testPlayDebugUnitTest/
@@ -87,7 +87,7 @@ jobs:
       - name: Upload Play APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZERNEX-Files-1.1.0-Play
+          name: ZERNEX-Files-2.0.0-Play
           path: app/build/outputs/apk/play/release/*.apk
           if-no-files-found: error
           retention-days: 30
@@ -95,7 +95,7 @@ jobs:
       - name: Upload Android 10 legacy APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZERNEX-Files-1.1.0-Android10-Legacy
+          name: ZERNEX-Files-2.0.0-Android10-Legacy
           path: app/build/outputs/apk/android10Legacy/release/*.apk
           if-no-files-found: error
           retention-days: 30
