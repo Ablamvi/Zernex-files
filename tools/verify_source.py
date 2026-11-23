@@ -21,7 +21,7 @@ archive_tests = ROOT / "app/src/test/java/com/zernex/files/ArchiveEngineTest.kt"
 visuals = (ROOT / "app/src/main/java/com/zernex/files/FileVisuals.kt").read_text(encoding="utf-8")
 visual_tests = ROOT / "app/src/test/java/com/zernex/files/FileVisualsTest.kt"
 
-check("version 1.1.0", 'versionName = "2.0.0"' in build)
+check("version 2.0.0", 'versionName = "2.0.0"' in build)
 check("Play target API 36", 'create("play")' in build and 'targetSdk = 36' in build)
 check("Android 10 legacy target API 29", 'create("android10Legacy")' in build and 'targetSdk = 29' in build and 'LEGACY_STORAGE", "true"' in build)
 check("manifest legacy placeholder", 'android:requestLegacyExternalStorage="${requestLegacyExternalStorage}"' in manifest)
@@ -42,7 +42,8 @@ check("archive tests cover formats and Zip Slip", archive_tests.is_file() and al
 check("archive libraries pinned", all(token in build for token in ['commons-compress:1.28.0', 'xz:1.12', 'zip4j:2.11.6']))
 check("strict monochrome + red/green/yellow palette", all(token in main for token in ['0xFF0B0B0C', '0xFF151516', '0xFFE34D4D', '0xFF38C978', '0xFFF4C542']))
 check("high-contrast monochrome text palette", '0xFFF5F5F5' in main and '0xFFB8B8BA' in main and 'LocalContentColor provides MaterialTheme.colorScheme.onSurface' in main)
-check("semantic file icon system", 'private fun fileAccent' in local and 'private fun safAccent' in saf and "ZernexCategoryRail" in local)
+check("semantic file icon system", 'private fun fileAccent' in local and 'private fun safAccent' in saf and "ZernexCategoryRail" in local and "ZernexBottomNavigation" in local)
+check("icon-led tools page", "ZernexToolsPage(" in local and all(token in visuals for token in ["Stockage", "Corbeille", "Doublons", "Dossier SAF"]))
 check("SAF persisted permission", 'takePersistableUriPermission' in local)
 check("SAF document browser", 'DocumentFile.fromTreeUri' in saf)
 check("no forced SAF API 29 in legacy build", 'Build.VERSION.SDK_INT == 29 && !BuildConfig.LEGACY_STORAGE' in local)
