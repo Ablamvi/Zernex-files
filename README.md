@@ -40,6 +40,8 @@ La signature Release est fournie par les secrets du dépôt. Le certificat doit 
 
 Les onglets persistants, double panneau, gestionnaire de tâches avec pause/reprise, RAR/RAR5, ISO, SFTP/SMB/WebDAV, Shizuku/root, coffre chiffré, éditeur hexadécimal, gestionnaire d'APK avancé et installation XAPK ne sont pas inclus dans la version 2.0.0 de cette branche. Ils nécessitent des implémentations et tests dédiés.
 
+Validation de la branche V2 : workflow GitHub Actions #93 réussi (13 tests JVM, lint et deux APK Release construits). Attention : aucun keystore de distribution n'est configuré ; les APK de ce workflow sont non signés et ne doivent pas être utilisés comme mise à jour de production.
+
 Voir :
 - [Guide utilisateur](docs/GUIDE_UTILISATION_FR_2.0.0.md)
 - [Matrice des fonctions et limites](docs/FEATURES_AND_LIMITS_2.0.0.md)
