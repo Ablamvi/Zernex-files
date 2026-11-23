@@ -1,7 +1,40 @@
-ZERNEX Files 1.0.4 — état de livraison
+ZERNEX Files 2.0.0 — branche feature/zernex-files-v2
 
-Modifications : navigation parent/racine plus explicite ; suppression des cases à cocher et commandes individuelles sur chaque ligne/carte du navigateur local ; appui long pour sélectionner ; barre d’actions groupées ancrée en bas dans les navigateurs local et SAF ; sélection multiple conservée.
+État : refonte V2 implémentée sur branche dédiée ; PR brouillon #2 ouverte, non fusionnée.
+VersionName : 2.0.0
+VersionCode : 2000
+Branche : feature/zernex-files-v2
+Base : feature/pro-archives-1.1.0
 
-Contrôles : script de vérification statique 30/30, XML Android parsés, délimiteurs Kotlin équilibrés. Ces contrôles ne remplacent pas une compilation.
+Refonte :
+- Thème noir/graphite/blanc et accents stricts rouge/vert/jaune.
+- Icônes de fichiers sur fonds neutres ; aucun dégradé multicolore dans les navigateurs.
+- Catégories centralisées et testées ; rail d'icônes local + SAF.
+- Navigation inférieure, page Outils en tuiles, marque et icône de lancement harmonisées.
+- Documentation utilisateur, matrice des fonctions, design system et revue de licences.
 
-Compilation Android : non confirmée dans cet environnement. Exécuter les tâches Gradle des variantes play et android10Legacy dans une CI disposant du SDK Android et des dépendances Gradle.
+Fonctions :
+- Gestion fichiers local + SAF, sélection multiple, copie/déplacement, renommage, corbeille, favoris, récents, recherche, tri, propriétés, MD5 et doublons.
+- Aperçus médias/PDF et éditeur texte.
+- Moteur d'archives local + SAF : aperçu, création ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ, extraction ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ/GZ/BZ2/XZ, mot de passe ZIP AES-256.
+- Extraction sécurisée, protections de chemins, liens et collisions ; limites d'entrées et de taille.
+
+Validation CI — workflows #93 (push), #97 (push après documentation) et #98 (PR #2) :
+- Vérificateur statique : réussi.
+- Tests JVM : 13/13 réussis (ArchiveEngineTest 5, FileVisualsTest 6, SafArchiveBridgeTest 2).
+- lintPlayRelease : réussi.
+- assemblePlayRelease : réussi.
+- assembleAndroid10LegacyRelease : réussi.
+- Artefacts Play et Android 10 Legacy générés (~3,68 Mo chacun).
+
+SIGNATURE :
+- Aucun secret de keystore Release configuré dans GitHub Actions.
+- Les APK Release générés par le workflow #93 sont NON SIGNÉS.
+- Ils ne peuvent pas mettre à jour une installation signée existante et ne sont pas des APK de production.
+- Ne pas publier avant configuration d'un keystore de distribution stable.
+
+À faire avant publication :
+- Configurer le keystore existant comme secrets GitHub ; ne jamais commiter le keystore.
+- Installer et tester sur appareil Android 10 et Android 11+.
+- Vérifier permissions, stockage amovible, SAF et parcours archives sur appareil réel.
+- Décider et développer RAR/RAR5, ISO, archives multi-volumes, double panneau, SFTP/SMB/WebDAV, file persistante, coffre et intégration Shizuku/root.

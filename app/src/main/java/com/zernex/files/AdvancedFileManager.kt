@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
@@ -208,6 +209,9 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
     var confirmReplace by remember { mutableStateOf(prefs.getBoolean("confirm_replace", true)) }
     var interactivePaste by remember { mutableStateOf(prefs.getBoolean("interactive_paste", true)) }
     var deleteAfterZip by remember { mutableStateOf(prefs.getBoolean("delete_after_zip", false)) }
+    var chosenArchiveFormat by remember { mutableStateOf(ArchiveFormat.ZIP) }
+    var archivePassword by remember { mutableStateOf("") }
+    var archiveFormatMenuExpanded by remember { mutableStateOf(false) }
     var openBehavior by remember { mutableStateOf(prefs.getString("open_behavior", "menu") ?: "menu") }
     var archiveDestination by remember { mutableStateOf(prefs.getString("archive_destination", "current") ?: "current") }
     var rememberLastFolder by remember { mutableStateOf(prefs.getBoolean("remember_last_folder", true)) }
@@ -484,6 +488,30 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
         }
     }
 
+    if (dialog == "tools") {
+        ZernexToolsPage(
+            onBack = { dialog = "" },
+            onStorage = { storageSummary = readStorageSummary(Environment.getExternalStorageDirectory()); dialog = "storage" },
+            onTrash = { trashItems = loadTrash(context); dialog = "trash" },
+            onDuplicates = {
+                busy = true
+                operationLabel = "Recherche des doublons…"
+                Thread {
+                    val groups = findDuplicateGroups(Environment.getExternalStorageDirectory())
+                    Handler(Looper.getMainLooper()).post {
+                        duplicateGroups = groups
+                        busy = false
+                        dialog = "duplicates"
+                    }
+                }.start()
+            },
+            onPermissions = { dialog = "permissions" },
+            onSettings = { dialog = "settings" },
+            onChooseSaf = { dialog = ""; onChooseSaf() }
+        )
+        return
+    }
+
     if (previewFile != null) {
         FilePreviewScreen(previewFile!!, onClose = { previewFile = null })
         return
@@ -695,7 +723,10 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
             }) { Icon(Icons.Default.ArrowUpward, contentDescription = "Dossier parent ou racine", tint = if (currentPath != sharedStorageRoot) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
             Spacer(Modifier.width(2.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("ZERNEX Files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    ZernexBrandMark()
+                    Text("ZERNEX Files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp)
+                }
                 val localPathParts = remember(currentPath, sharedStorageRoot) {
                     runCatching {
                         val relative = File(currentPath).canonicalFile.relativeTo(File(sharedStorageRoot).canonicalFile).path
@@ -772,6 +803,11 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                 }
             }
         }
+        ZernexCategoryRail(selected = searchType, onSelected = { category ->
+            searchType = category
+            advancedSearch = false
+            query = ""
+        })
         if (searchOpen) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Nom de fichier ou de dossier…") }, leadingIcon = { Icon(Icons.Default.Search, null) }, trailingIcon = { IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, null) } }); if (searchingFiles) LinearProgressIndicator(Modifier.fillMaxWidth()) }
         if (advancedSearch) Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -861,7 +897,7 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                 }
             }
         } else if (layout == BrowserLayout.LIST) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 112.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 112.dp else 88.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 items(files, key = { it.absolutePath }) { file ->
                     val toggleSelection: () -> Unit = { if (!busy) { if (selected.contains(file.absolutePath)) selected.remove(file.absolutePath) else selected.add(file.absolutePath) } }
                     FileListRow(
@@ -884,7 +920,7 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                 }
             }
         } else {
-            LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 112.dp), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 132.dp else 20.dp)) {
+            LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 112.dp), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 132.dp else 96.dp)) {
                 gridItems(files, key = { it.absolutePath }) { file ->
                     val toggleSelection: () -> Unit = { if (!busy) { if (selected.contains(file.absolutePath)) selected.remove(file.absolutePath) else selected.add(file.absolutePath) } }
                     FileGridCard(
@@ -910,7 +946,7 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
       }
       if (selected.isNotEmpty()) {
         Surface(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             shadowElevation = 10.dp,
@@ -943,25 +979,117 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                     TextButton(enabled = !busy && selectedLocalFiles.isNotEmpty(), onClick = { shareLocalFiles(context, selectedLocalFiles) }) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(4.dp)); Text("Partager") }
                     if (selectedLocalFiles.size == 1) TextButton(enabled = !busy, onClick = { propertiesFile = selectedLocalFiles.first() }) { Icon(Icons.Default.Info, null); Spacer(Modifier.width(4.dp)); Text("Détails") }
                     TextButton(enabled = !busy && clipboardPaths.isEmpty() && selectedLocalFiles.isNotEmpty(), onClick = {
-                        busy = true; operationLabel = "Création de l’archive…"; operationProgress = 0f
-                        val sources = selectedLocalFiles.toList()
-                        Thread {
-                            val result = runCatching { createZipArchive(sources, archiveOutputDirectory(currentDir, archiveDestination)) }
-                            Handler(Looper.getMainLooper()).post {
-                                busy = false
-                                val archiveMessage = result.fold({ "Archive créée : ${it.name}" }, { "Compression impossible : ${it.message}" })
-                                val preserved = if (deleteAfterZip && result.isSuccess) sources.filterNot { runCatching { moveToTrash(it, Environment.getExternalStorageDirectory()) }.getOrDefault(false) } else emptyList()
-                                message = if (preserved.isEmpty()) archiveMessage else "$archiveMessage • ${preserved.size} original(aux) conservé(s) : corbeille inaccessible"
-                                refreshNow()
-                            }
-                        }.start()
+                        chosenArchiveFormat = ArchiveFormat.ZIP
+                        archivePassword = ""
+                        dialog = "create_archive"
                     }) { Icon(Icons.Default.FolderZip, null); Spacer(Modifier.width(4.dp)); Text("Compresser") }
                 }
             }
         }
       }
+      if (selected.isEmpty()) {
+        ZernexBottomNavigation(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            onFiles = { dialog = "" },
+            onRecent = { dialog = "recent" },
+            onFavorites = { dialog = "favorites" },
+            onTools = { dialog = "tools" }
+        )
+      }
 
     }
+
+    if (dialog == "create_archive") AlertDialog(
+        onDismissRequest = { dialog = ""; archivePassword = ""; archiveFormatMenuExpanded = false },
+        title = { Text("Créer une archive") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("${selectedLocalFiles.size} élément(s) seront compressés. Le fichier final sera créé dans le dossier de destination configuré.", style = MaterialTheme.typography.bodySmall)
+                Box {
+                    OutlinedButton(
+                        enabled = !busy,
+                        onClick = { archiveFormatMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Format : ${chosenArchiveFormat.label}", modifier = Modifier.weight(1f))
+                        Icon(Icons.Default.ExpandMore, contentDescription = "Choisir le format")
+                    }
+                    DropdownMenu(
+                        expanded = archiveFormatMenuExpanded,
+                        onDismissRequest = { archiveFormatMenuExpanded = false }
+                    ) {
+                        ArchiveFormat.values().forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label + option.extension) },
+                                onClick = {
+                                    chosenArchiveFormat = option
+                                    archiveFormatMenuExpanded = false
+                                    if (option != ArchiveFormat.ZIP) archivePassword = ""
+                                }
+                            )
+                        }
+                    }
+                }
+                if (chosenArchiveFormat == ArchiveFormat.ZIP) {
+                    OutlinedTextField(
+                        value = archivePassword,
+                        onValueChange = { archivePassword = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Mot de passe ZIP (facultatif)") },
+                        supportingText = { Text("Chiffrement AES-256. 8 caractères minimum si utilisé.") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                } else {
+                    Text("Ce format est créé sans mot de passe. Le chiffrement est actuellement disponible uniquement pour ZIP.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text("Les liens symboliques sont refusés. Aucun fichier existant ne sera remplacé.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !busy && selectedLocalFiles.isNotEmpty() &&
+                    (archivePassword.isBlank() || (chosenArchiveFormat == ArchiveFormat.ZIP && archivePassword.length >= 8)),
+                onClick = {
+                    val sources = selectedLocalFiles.toList()
+                    val format = chosenArchiveFormat
+                    val password = archivePassword.takeIf { it.isNotBlank() }
+                    dialog = ""
+                    archivePassword = ""
+                    busy = true
+                    operationLabel = "Création ${format.label}…"
+                    operationProgress = 0f
+                    Thread {
+                        val result = runCatching {
+                            ArchiveEngine.create(
+                                sources,
+                                archiveOutputDirectory(currentDir, archiveDestination),
+                                "ZERNEX_${System.currentTimeMillis()}",
+                                format,
+                                password
+                            )
+                        }
+                        Handler(Looper.getMainLooper()).post {
+                            busy = false
+                            val archiveMessage = result.fold(
+                                { "Archive ${format.label} créée : ${it.name}" },
+                                { "Compression impossible : ${it.message ?: "erreur inconnue"}" }
+                            )
+                            val preserved = if (deleteAfterZip && result.isSuccess) {
+                                sources.filterNot { runCatching { moveToTrash(it, Environment.getExternalStorageDirectory()) }.getOrDefault(false) }
+                            } else emptyList()
+                            message = if (preserved.isEmpty()) archiveMessage else "$archiveMessage • ${preserved.size} original(aux) conservé(s) : corbeille inaccessible"
+                            selected.clear()
+                            refreshNow()
+                        }
+                    }.start()
+                }
+            ) { Text("Créer") }
+        },
+        dismissButton = {
+            TextButton(onClick = { dialog = ""; archivePassword = ""; archiveFormatMenuExpanded = false }) { Text("Annuler") }
+        }
+    )
 
     if (dialog == "mkdir" || dialog == "rename" || dialog == "newtxt") AlertDialog(
         onDismissRequest = { dialog = "" },
@@ -1551,31 +1679,7 @@ private fun transferLocalFiles(
     return LocalTransferResult(completed, warnings, skipped, cancelled)
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-private fun fileAccent(file: File): Color {
-    if (file.isDirectory) return when (file.name.lowercase(Locale.ROOT)) {
-        "dcim", "pictures", "images" -> Color(0xFF54B8FF)
-        "music", "podcasts" -> Color(0xFFB18CFF)
-        "movies", "videos" -> Color(0xFFFF8B70)
-        "download", "downloads" -> Color(0xFF61D69B)
-        "documents" -> Color(0xFFFFC66D)
-        "android" -> Color(0xFF84C96B)
-        "alarms", "notifications", "ringtones" -> Color(0xFFFF78AA)
-        else -> Color(0xFFFFB45C)
-    }
-    return when (file.extension.lowercase(Locale.ROOT)) {
-        "pdf" -> Color(0xFFFF6F7F)
-        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "heic" -> Color(0xFF61D69B)
-        "mp4", "mkv", "mov", "webm", "avi" -> Color(0xFF54B8FF)
-        "mp3", "wav", "ogg", "flac", "m4a" -> Color(0xFFB18CFF)
-        "zip", "7z", "rar", "tar", "gz", "apk", "aab", "jar" -> Color(0xFFFFB45C)
-        "kt", "java", "js", "ts", "py", "json", "xml", "yml", "yaml", "html", "css" -> Color(0xFF45D1C1)
-        "doc", "docx", "odt", "rtf", "txt", "md" -> Color(0xFF83B9FF)
-        "xls", "xlsx", "csv", "ods" -> Color(0xFF67D6A0)
-        "ppt", "pptx", "odp" -> Color(0xFFFF987A)
-        else -> Color(0xFFA9B5CA)
-    }
-}
+private fun fileAccent(file: File): Color = zernexAccentFor(file.name, file.isDirectory)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -1588,9 +1692,9 @@ private fun FileListRow(file: File, isSelected: Boolean, compact: Boolean, showS
         java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(java.util.Date(file.lastModified()))
     }
     Surface(
-        color = if (isSelected) accent.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.42f),
+        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(15.dp),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp).border(1.dp, if (isSelected) accent.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.035f), RoundedCornerShape(15.dp)).animateContentSize()
+        modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp).border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.62f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), RoundedCornerShape(15.dp)).animateContentSize()
     ) {
         Row(
             Modifier.fillMaxWidth().graphicsLayer { scaleX = scale; scaleY = scale }
@@ -1609,7 +1713,7 @@ private fun FileListRow(file: File, isSelected: Boolean, compact: Boolean, showS
                         if (count == 0) "Dossier vide" else "$count éléments"
                     } else listOfNotNull(ext.uppercase().ifBlank { "FICHIER" }.takeIf { showSize.not() }, formatSize(file.length()).takeIf { showSize }).joinToString(" • "),
                     maxLines = 1, style = MaterialTheme.typography.labelSmall,
-                    color = accent.copy(alpha = 0.95f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (showDate) Text(modified, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -1625,9 +1729,9 @@ private fun FileGridCard(file: File, isSelected: Boolean, showSize: Boolean, sho
     val accent = fileAccent(file)
     val scale by animateFloatAsState(if (isSelected) 1.04f else 1f, label = "file-grid-scale")
     Surface(
-        color = if (isSelected) accent.copy(alpha = 0.19f) else MaterialTheme.colorScheme.surface,
+        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.border(1.dp, if (isSelected) accent.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.055f), RoundedCornerShape(20.dp)).animateContentSize().graphicsLayer { scaleX = scale; scaleY = scale }
+        modifier = Modifier.border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.62f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), RoundedCornerShape(16.dp)).animateContentSize().graphicsLayer { scaleX = scale; scaleY = scale }
     ) {
         Column(
             Modifier.fillMaxWidth().combinedClickable(onClick = { if (enabled) onClick() }, onLongClick = { if (enabled) onLongClick() }).padding(11.dp),
@@ -1643,7 +1747,7 @@ private fun FileGridCard(file: File, isSelected: Boolean, showSize: Boolean, sho
             Text(file.name, maxLines = 2, minLines = 2, style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold)
             if (showSize) Text(if (file.isDirectory) "Dossier" else formatSize(file.length()),
-                style = MaterialTheme.typography.labelSmall, color = accent)
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (showDate) Text(java.text.SimpleDateFormat("dd/MM/yy", Locale.getDefault()).format(java.util.Date(file.lastModified())), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -1653,23 +1757,29 @@ private fun FileGridCard(file: File, isSelected: Boolean, showSize: Boolean, sho
 private fun FileTypeIcon(file: File, size: androidx.compose.ui.unit.Dp, large: Boolean = false) {
     val accent = fileAccent(file)
     val icon = fileVisualIcon(file)
-    val pulse by animateFloatAsState(if (large) 1.04f else 1f, label = "file-icon-emphasis")
     Box(
-        Modifier.size(size).graphicsLayer { scaleX = pulse; scaleY = pulse }
-            .clip(RoundedCornerShape(if (large) 21.dp else 16.dp))
-            .background(Brush.linearGradient(listOf(accent.copy(alpha = 0.25f), accent.copy(alpha = 0.09f), MaterialTheme.colorScheme.surfaceVariant)))
-            .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(if (large) 21.dp else 16.dp)),
+        Modifier.size(size)
+            .clip(RoundedCornerShape(if (large) 15.dp else 12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(
+                width = 1.dp,
+                color = if (file.isDirectory) MaterialTheme.colorScheme.outlineVariant else accent.copy(alpha = 0.42f),
+                shape = RoundedCornerShape(if (large) 15.dp else 12.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Box(Modifier.align(Alignment.TopStart).padding(6.dp).size(if (large) 5.dp else 4.dp).background(accent.copy(alpha = 0.75f), RoundedCornerShape(50)))
-        Icon(icon, contentDescription = null, tint = accent,
-            modifier = Modifier.size(if (file.isDirectory) size * 0.72f else size * 0.54f))
-        if (file.isDirectory) {
-            Surface(Modifier.align(Alignment.BottomEnd).padding(4.dp), color = accent, shape = RoundedCornerShape(50)) {
-                Icon(Icons.Default.FolderOpen, null, tint = Color(0xFF172033), modifier = Modifier.padding(2.dp).size(if (large) 11.dp else 9.dp))
-            }
-        } else {
-            Box(Modifier.align(Alignment.BottomEnd).padding(6.dp).size(5.dp).background(accent, RoundedCornerShape(50)))
+        Icon(
+            imageVector = icon,
+            contentDescription = if (file.isDirectory) "Dossier" else "Fichier ${file.extension}",
+            tint = if (file.isDirectory) MaterialTheme.colorScheme.onSurface else accent,
+            modifier = Modifier.size(if (file.isDirectory) size * 0.70f else size * 0.58f)
+        )
+        if (!file.isDirectory) {
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(5.dp)
+                    .size(if (large) 7.dp else 6.dp)
+                    .background(accent, RoundedCornerShape(50))
+            )
         }
     }
 }
@@ -1688,6 +1798,7 @@ private fun fileVisualIcon(file: File): androidx.compose.ui.graphics.vector.Imag
         "ringtones" -> Icons.Default.MusicNote
         else -> Icons.Default.Folder
     }
+    if (ArchiveEngine.isSupportedName(file.name)) return Icons.Default.FolderZip
     return when (file.extension.lowercase(Locale.ROOT)) {
         "pdf" -> Icons.Default.PictureAsPdf
         "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg" -> Icons.Default.Image
@@ -1705,9 +1816,13 @@ private fun fileVisualIcon(file: File): androidx.compose.ui.graphics.vector.Imag
 }
 
 private fun openFile(file: File, onPreview: () -> Unit, onEdit: () -> Unit) {
+    if (ArchiveEngine.isSupportedName(file.name)) {
+        onPreview()
+        return
+    }
     when (file.extension.lowercase()) {
         "txt", "md", "json", "xml", "html", "htm", "css", "js", "ts", "kt", "java", "py", "sh", "yml", "yaml", "toml", "ini", "properties", "gradle", "sql", "c", "cpp", "h", "rs", "go", "dart", "php", "rb", "swift", "log", "conf" -> onEdit()
-        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "pdf", "mp4", "mkv", "webm", "mov", "mp3", "wav", "ogg", "flac", "m4a", "jks", "keystore", "jceks", "p12", "pfx", "bks", "pem", "crt", "cer", "der", "zip" -> onPreview()
+        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "pdf", "mp4", "mkv", "webm", "mov", "mp3", "wav", "ogg", "flac", "m4a", "jks", "keystore", "jceks", "p12", "pfx", "bks", "pem", "crt", "cer", "der", "zip", "7z", "tar", "tgz", "gz", "bz2", "xz", "tbz", "tbz2", "txz" -> onPreview()
         else -> onPreview()
     }
 }
@@ -1780,7 +1895,7 @@ private class SyntaxColorTransformation(private val extension: String) : VisualT
             append(text)
             val source = text.text
             val wordRegex = Regex("\\b[A-Za-z_][A-Za-z0-9_]*\\b")
-            wordRegex.findAll(source).forEach { m -> if (m.value in keywords) addStyle(SpanStyle(color = Color(0xFF83C8FF), fontWeight = FontWeight.Bold), m.range.first, m.range.last + 1) }
+            wordRegex.findAll(source).forEach { m -> if (m.value in keywords) addStyle(SpanStyle(color = Color(0xFF38C978), fontWeight = FontWeight.Bold), m.range.first, m.range.last + 1) }
             Regex("//[^\\n]*|#[^\\n]*").findAll(source).forEach { addStyle(SpanStyle(color = Color(0xFF858585)), it.range.first, it.range.last + 1) }
             Regex("\"([^\"\\\\]|\\\\.)*\"|'([^'\\\\]|\\\\.)*'").findAll(source).forEach { addStyle(SpanStyle(color = Color(0xFFD6D6D6)), it.range.first, it.range.last + 1) }
             Regex("\\b[0-9]+(\\.[0-9]+)?\\b").findAll(source).forEach { addStyle(SpanStyle(color = Color(0xFFAAAAAA)), it.range.first, it.range.last + 1) }
@@ -1928,28 +2043,87 @@ private fun extractZipSafely(archive: File, destination: File) {
 }
 
 @Composable
-private fun ZipArchivePreview(file: File) {
+private fun ArchivePreview(file: File) {
     val scope = rememberCoroutineScope()
-    var entries by remember(file) { mutableStateOf<List<Pair<String, Long>>>(emptyList()) }
+    var entries by remember(file) { mutableStateOf<List<ArchiveEntryInfo>>(emptyList()) }
     var message by remember(file) { mutableStateOf("") }
     var loading by remember(file) { mutableStateOf(true) }
+    var extracting by remember(file) { mutableStateOf(false) }
+    var showExtractDialog by remember(file) { mutableStateOf(false) }
+    var password by remember(file) { mutableStateOf("") }
+
     LaunchedEffect(file) {
-        entries = withContext(Dispatchers.IO) { runCatching { ZipFile(file).use { zip -> zip.entries().asSequence().map { it.name to it.size }.toList() } }.getOrElse { message = "Archive illisible : ${it.message}"; emptyList() } }
+        val result = withContext(Dispatchers.IO) { runCatching { ArchiveEngine.list(file) } }
+        entries = result.getOrElse { message = "Lecture de l’archive impossible : ${it.message ?: "format invalide"}"; emptyList() }
         loading = false
     }
+
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Text("${entries.size} entrées", Modifier.weight(1f)); Button(enabled = !loading && message != "Extraction en cours…", onClick = {
-            val dest = File(file.parentFile, file.nameWithoutExtension)
-            message = "Extraction en cours…"
-            scope.launch {
-                val result = withContext(Dispatchers.IO) { runCatching { extractZipSafely(file, dest) } }
-                message = result.fold({ "Extraction terminée : ${dest.absolutePath}" }, { "Extraction impossible : ${it.message ?: "erreur inconnue"}" })
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("${entries.size} entrée(s)", style = MaterialTheme.typography.titleSmall)
+                Text("ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }) { Text(if (message == "Extraction en cours…") "Extraction…" else "Extraire ici") } }
+            Button(enabled = !loading && !extracting, onClick = { showExtractDialog = true }) {
+                Text(if (extracting) "Extraction…" else "Extraire ici")
+            }
+        }
         if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        LazyColumn { items(entries) { (name, size) -> ListItem(headlineContent = { Text(name, maxLines = 1) }, supportingContent = { Text(if (size >= 0) formatSize(size) else "Taille inconnue") }, leadingContent = { Icon(if (name.endsWith("/")) Icons.Default.Folder else Icons.Default.InsertDriveFile, null) }) } }
+        if (loading || extracting) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (!loading && entries.isEmpty() && message.isBlank()) {
+            ZernexEmptyState("Archive vide", "Aucun élément n’a été trouvé dans cette archive.") {
+                Icon(Icons.Default.FolderZip, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
+            }
+        }
+        LazyColumn {
+            items(entries, key = { it.name }) { entry ->
+                ListItem(
+                    headlineContent = { Text(entry.name, maxLines = 1) },
+                    supportingContent = { Text(if (entry.isDirectory) "Dossier" else if (entry.size >= 0) formatSize(entry.size) else "Taille inconnue") },
+                    leadingContent = { Icon(if (entry.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile, null) }
+                )
+            }
+        }
     }
+
+    if (showExtractDialog) AlertDialog(
+        onDismissRequest = { if (!extracting) showExtractDialog = false },
+        title = { Text("Extraire l’archive") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Les éléments seront extraits dans un nouveau dossier nommé d’après l’archive. Les fichiers existants ne seront jamais écrasés.")
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Mot de passe (si requis)") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Text("Limites de sécurité : 10 000 entrées, 256 Mio par fichier et 512 Mio au total.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !extracting, onClick = {
+                showExtractDialog = false
+                extracting = true
+                val secret = password.takeIf { it.isNotBlank() }
+                val suffix = listOf(".tar.bz2", ".tar.gz", ".tar.xz", ".tbz2", ".tgz", ".txz").firstOrNull { file.name.endsWith(it, true) }
+                val folderName = if (suffix != null) file.name.dropLast(suffix.length) else file.name.substringBeforeLast('.', file.name)
+                val target = File(file.parentFile ?: file.absoluteFile.parentFile!!, folderName.ifBlank { "Archive extraite" })
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) { runCatching { ArchiveEngine.extractSafely(file, target, secret) } }
+                    extracting = false
+                    message = result.fold(
+                        { "Extraction terminée : $it élément(s) dans ${target.absolutePath}" },
+                        { "Extraction impossible : ${it.message ?: "erreur inconnue"}" }
+                    )
+                    password = ""
+                }
+            }) { Text("Extraire") }
+        },
+        dismissButton = { TextButton(enabled = !extracting, onClick = { showExtractDialog = false; password = "" }) { Text("Annuler") } }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1978,7 +2152,7 @@ private fun FilePreviewScreen(file: File, onClose: () -> Unit) {
                 "mp3", "wav", "ogg", "flac", "m4a" -> AudioFilePreview(file)
                 "jks", "keystore", "jceks", "p12", "pfx", "bks" -> KeystoreFilePreview(file)
                 "pem", "crt", "cer", "der" -> CertificateFilePreview(file)
-                "zip" -> ZipArchivePreview(file)
+                "zip", "7z", "tar", "tgz", "gz", "bz2", "xz", "tbz", "tbz2", "txz" -> ArchivePreview(file)
                 else -> {
                     val context = LocalContext.current
                     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {

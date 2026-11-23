@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.documentfile.provider.DocumentFile
@@ -45,41 +46,17 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
+import java.io.File
 import java.io.ByteArrayOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
 import java.security.MessageDigest
 
 private enum class SafSort { NAME, SIZE, DATE, TYPE }
 private enum class SafLayout { LIST, GRID }
 
-/** File-type accent palette shared by SAF rows/cards and preview headers. */
-private fun safAccent(entry: SafEntry): Color {
-    if (entry.isDirectory) return when (entry.name.lowercase(Locale.ROOT)) {
-        "dcim", "pictures", "images" -> Color(0xFF54B8FF)
-        "music", "podcasts" -> Color(0xFFB18CFF)
-        "movies", "videos" -> Color(0xFFFF8B70)
-        "download", "downloads" -> Color(0xFF61D69B)
-        "documents" -> Color(0xFFFFC66D)
-        "android" -> Color(0xFF84C96B)
-        else -> Color(0xFFFFB45C)
-    }
-    return when (entry.name.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
-        "pdf" -> Color(0xFFFF6F7F)
-        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "heic" -> Color(0xFF61D69B)
-        "mp4", "mkv", "mov", "webm", "avi" -> Color(0xFF54B8FF)
-        "mp3", "wav", "ogg", "flac", "m4a" -> Color(0xFFB18CFF)
-        "zip", "7z", "rar", "tar", "gz", "apk", "aab", "jar" -> Color(0xFFFFB45C)
-        "kt", "java", "js", "ts", "py", "json", "xml", "yml", "yaml", "html", "css" -> Color(0xFF45D1C1)
-        "doc", "docx", "odt", "rtf", "txt", "md" -> Color(0xFF83B9FF)
-        "xls", "xlsx", "csv", "ods" -> Color(0xFF67D6A0)
-        "ppt", "pptx", "odp" -> Color(0xFFFF987A)
-        else -> Color(0xFFA9B5CA)
-    }
-}
+/** Shared three-accent semantic palette for local and SAF file entries. */
+private fun safAccent(entry: SafEntry): Color =
+    zernexAccentFor(entry.name, entry.isDirectory)
+
 
 private data class SafEntry(
     val document: DocumentFile,
@@ -154,6 +131,11 @@ fun SafFileManagerScreen(
     var bulkRenamePrefix by remember { mutableStateOf("") }
     var bulkRenameSuffix by remember { mutableStateOf("") }
     var activeEntry by remember { mutableStateOf<SafEntry?>(null) }
+    var archiveEntries by remember { mutableStateOf<List<ArchiveEntryInfo>>(emptyList()) }
+    var archiveInspecting by remember { mutableStateOf(false) }
+    var archivePassword by remember { mutableStateOf("") }
+    var chosenArchiveFormat by remember { mutableStateOf(ArchiveFormat.ZIP) }
+    var archiveFormatMenuExpanded by remember { mutableStateOf(false) }
     val trashPrefKey = "saf_trash_records_$treeKey"
     var trashRecords by remember(treeUri) { mutableStateOf(loadSafTrashRecords(prefs, trashPrefKey)) }
     var editorEntry by remember { mutableStateOf<SafEntry?>(null) }
@@ -298,7 +280,21 @@ fun SafFileManagerScreen(
         }
         when {
             isSafImageFile(entry.name) -> previewEntry = entry
-            isSafZipFile(entry.name) -> { activeEntry = entry; dialog = "extract" }
+            ArchiveEngine.isSupportedName(entry.name) -> {
+                activeEntry = entry
+                dialog = "extract"
+                archivePassword = ""
+                archiveEntries = emptyList()
+                archiveInspecting = true
+                scope.launch {
+                    val inspected = withContext(Dispatchers.IO) {
+                        runCatching { inspectSafArchive(context, entry.document) }
+                    }
+                    archiveInspecting = false
+                    inspected.onSuccess { archiveEntries = it }
+                        .onFailure { message = "Lecture de l'archive impossible : ${it.message ?: "format ou mot de passe non pris en charge"}" }
+                }
+            }
             isSafTextFile(entry.name) -> {
                 editorEntry = entry
                 editorLoading = true
@@ -460,7 +456,7 @@ fun SafFileManagerScreen(
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 10.dp, vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 46.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.FolderOpen, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(23.dp))
+            ZernexBrandMark()
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("ZERNEX Files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -529,6 +525,7 @@ fun SafFileManagerScreen(
                 }
             }
         }
+        ZernexCategoryRail(selected = category, onSelected = { category = it })
         if (searchOpen) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
                 value = query,
@@ -540,11 +537,6 @@ fun SafFileManagerScreen(
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = { IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, null) } }
             )
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Tous", "Images", "Vidéos", "Audio", "Documents", "Archives").forEach { item ->
-                    FilterChip(selected = category == item, onClick = { category = item }, label = { Text(item) })
-                }
-            }
             Text(
                 if (searchSubfolders) "Recherche dans les sous-dossiers activée (limite de 10 000 éléments par recherche)." else "Recherche dans le dossier courant.",
                 style = MaterialTheme.typography.labelSmall,
@@ -668,24 +660,25 @@ fun SafFileManagerScreen(
                         TextButton(enabled = !busy && clipboard.isEmpty(), onClick = { dialog = "trash" }) { Icon(Icons.Default.DeleteOutline, null); Text("Corbeille") }
                         TextButton(enabled = !busy, onClick = { val picked = collapseSafSelection(entries.filter { it.key in selectedKeys }); shareSafDocuments(context, picked) }) { Icon(Icons.Default.Share, null); Text("Partager") }
                         if (collapseSafSelection(entries.filter { it.key in selectedKeys }).size == 1) TextButton(enabled = !busy, onClick = { activeEntry = collapseSafSelection(entries.filter { it.key in selectedKeys }).first(); dialog = "properties" }) { Icon(Icons.Default.Info, null); Text("Détails") }
-                        if (collapseSafSelection(entries.filter { it.key in selectedKeys }).size == 1 && isSafZipFile(collapseSafSelection(entries.filter { it.key in selectedKeys }).first().name)) TextButton(enabled = !busy && clipboard.isEmpty(), onClick = { activeEntry = collapseSafSelection(entries.filter { it.key in selectedKeys }).first(); dialog = "extract" }) { Icon(Icons.Default.Unarchive, null); Text("Extraire") }
+                        if (collapseSafSelection(entries.filter { it.key in selectedKeys }).size == 1 && ArchiveEngine.isSupportedName(collapseSafSelection(entries.filter { it.key in selectedKeys }).first().name)) TextButton(enabled = !busy && clipboard.isEmpty(), onClick = { activeEntry = collapseSafSelection(entries.filter { it.key in selectedKeys }).first(); dialog = "extract" }) { Icon(Icons.Default.Unarchive, null); Text("Extraire") }
                         TextButton(enabled = !busy && clipboard.isEmpty(), onClick = {
-                            val picked = collapseSafSelection(entries.filter { it.key in selectedKeys })
-                            val parent = currentDirectory
-                            if (parent == null) message = "Dossier de destination indisponible"
-                            else {
-                                busy = true; selectedKeys.clear()
-                                scope.launch {
-                                    val result = withContext(Dispatchers.IO) { runCatching { createSafZip(context, picked.map { it.document }, parent) } }
-                                    busy = false
-                                    message = result.fold({ "Archive créée : ${it.name ?: "Archive.zip"}" }, { "Compression impossible : ${it.message ?: "erreur inconnue"}" })
-                                    refreshNow()
-                                }
-                            }
-                        }) { Icon(Icons.Default.FolderZip, null); Text("ZIP") }
+                            chosenArchiveFormat = ArchiveFormat.ZIP
+                            archivePassword = ""
+                            archiveFormatMenuExpanded = false
+                            dialog = "create_archive"
+                        }) { Icon(Icons.Default.FolderZip, null); Text("Compresser") }
                     }
                 }
             }
+        }
+        if (selectedKeys.isEmpty()) {
+            ZernexSafBottomNavigation(
+                modifier = Modifier.fillMaxWidth(),
+                onFiles = { dialog = "" },
+                onFavorites = { dialog = "favorites" },
+                onTrash = { dialog = "trashbin" },
+                onSettings = { dialog = "settings" }
+            )
         }
     }
 
@@ -820,23 +813,134 @@ fun SafFileManagerScreen(
     if (dialog == "extract" && activeEntry != null) {
         val archive = activeEntry!!
         AlertDialog(
-            onDismissRequest = { dialog = ""; activeEntry = null },
-            title = { Text("Extraire l’archive ?") },
-            text = { Text("Le contenu de ${archive.name} sera extrait dans le dossier courant. Les chemins dangereux, les doublons et les archives trop volumineuses seront refusés.") },
+            onDismissRequest = { dialog = ""; activeEntry = null; archivePassword = ""; archiveEntries = emptyList() },
+            title = { Text("Contenu de l'archive") },
+            text = {
+                Column(
+                    Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(archive.name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (archiveInspecting) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Text("Lecture des entrées…", style = MaterialTheme.typography.bodySmall)
+                    } else if (archiveEntries.isEmpty()) {
+                        Text("Aucune entrée lisible. L'archive peut être chiffrée, endommagée ou utiliser un format non pris en charge.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("${archiveEntries.size} élément(s)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        archiveEntries.take(24).forEach { item ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(
+                                    if (item.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+                                    contentDescription = null,
+                                    tint = if (item.isDirectory) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
+                                    if (!item.isDirectory) Text(formatSafSize(item.size), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        if (archiveEntries.size > 24) Text("+ ${archiveEntries.size - 24} élément(s)…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    OutlinedTextField(
+                        value = archivePassword,
+                        onValueChange = { archivePassword = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Mot de passe si nécessaire") },
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                    Text("L'extraction se fait dans un nouveau dossier. Les chemins dangereux et les collisions sont refusés.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = !busy && !archiveInspecting, onClick = {
                     dialog = ""
                     busy = true
                     scope.launch {
-                        val result = withContext(Dispatchers.IO) { runCatching { extractSafZip(context, archive.document, currentDirectory ?: error("Dossier indisponible")) } }
+                        val result = withContext(Dispatchers.IO) {
+                            runCatching {
+                                extractSafArchive(
+                                    context,
+                                    archive.document,
+                                    currentDirectory ?: error("Dossier indisponible"),
+                                    archivePassword.takeIf { it.isNotBlank() }
+                                )
+                            }
+                        }
                         busy = false
                         message = result.fold({ "Archive extraite (${it} élément(s))" }, { "Extraction impossible : ${it.message ?: "archive invalide"}" })
                         activeEntry = null
+                        archivePassword = ""
+                        archiveEntries = emptyList()
                         refreshNow()
                     }
                 }) { Text("Extraire ici") }
             },
-            dismissButton = { TextButton(onClick = { dialog = ""; activeEntry = null }) { Text("Annuler") } }
+            dismissButton = { TextButton(onClick = { dialog = ""; activeEntry = null; archivePassword = ""; archiveEntries = emptyList() }) { Text("Annuler") } }
+        )
+    }
+    if (dialog == "create_archive") {
+        val picked = collapseSafSelection(entries.filter { it.key in selectedKeys })
+        AlertDialog(
+            onDismissRequest = { dialog = ""; archivePassword = ""; archiveFormatMenuExpanded = false },
+            title = { Text("Créer une archive") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("${picked.size} élément(s) seront compressés dans le dossier SAF courant.")
+                    Box {
+                        OutlinedButton(onClick = { archiveFormatMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Format : ${chosenArchiveFormat.label}", modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.ExpandMore, contentDescription = "Choisir le format")
+                        }
+                        DropdownMenu(expanded = archiveFormatMenuExpanded, onDismissRequest = { archiveFormatMenuExpanded = false }) {
+                            ArchiveFormat.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label + option.extension) },
+                                    onClick = { chosenArchiveFormat = option; archiveFormatMenuExpanded = false; if (option != ArchiveFormat.ZIP) archivePassword = "" }
+                                )
+                            }
+                        }
+                    }
+                    if (chosenArchiveFormat == ArchiveFormat.ZIP) {
+                        OutlinedTextField(
+                            value = archivePassword,
+                            onValueChange = { archivePassword = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Mot de passe ZIP (facultatif, 8 caractères minimum)") },
+                            visualTransformation = PasswordVisualTransformation()
+                        )
+                    } else {
+                        Text("Le chiffrement par mot de passe est disponible uniquement pour ZIP.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !busy && picked.isNotEmpty() && (archivePassword.isBlank() || archivePassword.length >= 8), onClick = {
+                    val parent = currentDirectory
+                    if (parent == null) {
+                        message = "Dossier de destination indisponible"
+                    } else {
+                        dialog = ""
+                        busy = true
+                        selectedKeys.clear()
+                        val sources = picked.map { it.document }
+                        val format = chosenArchiveFormat
+                        val password = archivePassword.takeIf { it.isNotBlank() }
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) { runCatching { createSafArchive(context, sources, parent, format, password) } }
+                            busy = false
+                            message = result.fold({ "Archive créée : ${it.name ?: "Archive"}" }, { "Compression impossible : ${it.message ?: "erreur inconnue"}" })
+                            archivePassword = ""
+                            refreshNow()
+                        }
+                    }
+                }) { Text("Créer") }
+            },
+            dismissButton = { TextButton(onClick = { dialog = ""; archivePassword = ""; archiveFormatMenuExpanded = false }) { Text("Annuler") } }
         )
     }
 
@@ -921,7 +1025,7 @@ private fun SafFileIcon(entry: SafEntry, size: androidx.compose.ui.unit.Dp) {
         entry.isDirectory -> Icons.Default.Folder
         entry.name.endsWith(".pdf", true) -> Icons.Default.PictureAsPdf
         entry.name.endsWith(".apk", true) -> Icons.Default.Android
-        entry.name.endsWith(".zip", true) || entry.name.endsWith(".7z", true) || entry.name.endsWith(".rar", true) -> Icons.Default.FolderZip
+        ArchiveEngine.isSupportedName(entry.name) -> Icons.Default.FolderZip
         entry.name.endsWith(".jpg", true) || entry.name.endsWith(".jpeg", true) || entry.name.endsWith(".png", true) || entry.name.endsWith(".webp", true) -> Icons.Default.Image
         entry.name.endsWith(".mp4", true) || entry.name.endsWith(".mkv", true) || entry.name.endsWith(".webm", true) -> Icons.Default.Movie
         entry.name.endsWith(".mp3", true) || entry.name.endsWith(".wav", true) || entry.name.endsWith(".m4a", true) -> Icons.Default.MusicNote
@@ -929,19 +1033,27 @@ private fun SafFileIcon(entry: SafEntry, size: androidx.compose.ui.unit.Dp) {
         else -> Icons.Default.InsertDriveFile
     }
     Box(
-        Modifier.size(size).clip(RoundedCornerShape(14.dp))
-            .background(androidx.compose.ui.graphics.Brush.linearGradient(
-                listOf(accent.copy(alpha = 0.25f), accent.copy(alpha = 0.08f), MaterialTheme.colorScheme.surfaceVariant)
-            ))
-            .border(1.dp, accent.copy(alpha = 0.34f), RoundedCornerShape(14.dp)),
+        Modifier.size(size).clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(
+                1.dp,
+                if (entry.isDirectory) MaterialTheme.colorScheme.outlineVariant else accent.copy(alpha = 0.42f),
+                RoundedCornerShape(12.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
             contentDescription = if (entry.isDirectory) "Dossier" else "Fichier",
-            tint = accent,
+            tint = if (entry.isDirectory) MaterialTheme.colorScheme.onSurface else accent,
             modifier = Modifier.size(size * 0.62f)
         )
+        if (!entry.isDirectory) {
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(5.dp)
+                    .size(6.dp).background(accent, RoundedCornerShape(50))
+            )
+        }
     }
 }
 
@@ -1013,7 +1125,7 @@ private fun safCategoryMatches(entry: SafEntry, category: String): Boolean {
         "Vidéos" -> ext in setOf("mp4", "mkv", "mov", "webm", "3gp", "avi")
         "Audio" -> ext in setOf("mp3", "wav", "m4a", "ogg", "flac", "aac")
         "Documents" -> ext in setOf("pdf", "doc", "docx", "txt", "rtf", "odt", "xls", "xlsx", "ppt", "pptx", "json", "xml")
-        "Archives" -> ext in setOf("zip", "rar", "7z", "tar", "gz", "xz")
+        "Archives" -> ArchiveEngine.isSupportedName(entry.name)
         else -> true
     }
 }
@@ -1194,8 +1306,6 @@ private fun deleteSafTrash(root: DocumentFile?, record: SafTrashRecord): Boolean
 private fun isSafImageFile(name: String): Boolean = name.substringAfterLast('.', "").lowercase(Locale.ROOT) in
     setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "avif")
 
-private fun isSafZipFile(name: String): Boolean = name.endsWith(".zip", ignoreCase = true)
-
 private fun isSafTextFile(name: String): Boolean = name.substringAfterLast('.', "").lowercase(Locale.ROOT) in
     setOf("txt", "md", "csv", "json", "xml", "html", "htm", "log", "ini", "conf", "properties", "kt", "java", "js", "css", "yaml", "yml", "sh", "py")
 
@@ -1268,114 +1378,236 @@ private fun calculateSafDetails(context: Context, document: DocumentFile): SafDe
 
 private data class SafZipBudget(var entries: Int = 0, var bytes: Long = 0L)
 
-private fun createSafZip(context: Context, sources: List<DocumentFile>, targetParent: DocumentFile): DocumentFile {
-    if (sources.isEmpty()) error("Aucun élément sélectionné")
-    val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).format(Date())
-    val archiveName = uniqueSafName(targetParent, "ZERNEX_$stamp.zip")
-    val archive = targetParent.createFile("application/zip", archiveName) ?: error("Création de l'archive impossible")
-    val budget = SafZipBudget()
-    try {
-        val output = context.contentResolver.openOutputStream(archive.uri, "w") ?: error("Écriture de l'archive impossible")
-        ZipOutputStream(BufferedOutputStream(output)).use { zip ->
-            fun add(document: DocumentFile, archivePath: String, depth: Int) {
-                if (depth > 64) error("Arborescence trop profonde")
-                budget.entries++
-                if (budget.entries > 10000) error("Archive trop volumineuse : plus de 10 000 éléments")
-                if (document.isDirectory) {
-                    val normalized = archivePath.trimEnd('/') + "/"
-                    zip.putNextEntry(ZipEntry(normalized))
-                    zip.closeEntry()
-                    val children = document.listFiles().sortedBy { it.name?.lowercase(Locale.ROOT) ?: "" }
-                    children.forEach { child -> add(child, "$normalized${child.name ?: "Sans nom"}", depth + 1) }
-                } else {
-                    zip.putNextEntry(ZipEntry(archivePath))
-                    val input = context.contentResolver.openInputStream(document.uri) ?: error("Lecture impossible : ${document.name}")
-                    input.use { stream ->
-                        val buffer = ByteArray(32 * 1024)
-                        var fileBytes = 0L
-                        while (true) {
-                            val count = stream.read(buffer)
-                            if (count < 0) break
-                            fileBytes += count
-                            budget.bytes += count
-                            if (fileBytes > 256L * 1024 * 1024 || budget.bytes > 512L * 1024 * 1024) {
-                                error("Limite de taille de l'archive dépassée")
-                            }
-                            zip.write(buffer, 0, count)
-                        }
-                    }
-                    zip.closeEntry()
+
+private data class SafArchiveBridgeBudget(var entries: Int = 0, var bytes: Long = 0L)
+
+private const val SAF_ARCHIVE_MAX_SOURCE_ENTRIES = 50_000
+private const val SAF_ARCHIVE_MAX_SOURCE_BYTES = 8L * 1024L * 1024L * 1024L
+private const val SAF_ARCHIVE_MAX_EXTRACT_ENTRIES = 10_000
+private const val SAF_ARCHIVE_MAX_EXTRACT_BYTES = 512L * 1024L * 1024L
+
+private fun newSafArchiveWorkDir(context: Context): File {
+    val parent = File(context.cacheDir, "zernex-saf-archive-work")
+    if (!parent.exists() && !parent.mkdirs()) error("Cache d'archives SAF indisponible")
+    val work = File(parent, "job-${System.nanoTime()}")
+    if (!work.mkdirs()) error("Impossible de créer le dossier temporaire d'archive")
+    return work
+}
+
+internal fun isSafeArchiveLeafName(name: String): Boolean =
+    name.isNotBlank() && name !in setOf(".", "..") &&
+        !name.contains('/') && !name.contains('\\') &&
+        !name.contains(':') && !name.contains('\u0000')
+
+private fun uniqueLocalArchiveName(parent: File, requested: String): String {
+    if (!File(parent, requested).exists()) return requested
+    val extension = requested.substringAfterLast('.', "").takeIf { it.isNotEmpty() && !requested.endsWith('.') }
+    val base = if (extension == null) requested else requested.removeSuffix(".$extension")
+    var index = 1
+    while (index < 10000) {
+        val candidate = if (extension == null) "$base ($index)" else "$base ($index).$extension"
+        if (!File(parent, candidate).exists()) return candidate
+        index++
+    }
+    error("Trop de fichiers portent un nom similaire")
+}
+
+internal fun archiveBaseNameForSaf(name: String): String {
+    val lower = name.lowercase(Locale.ROOT)
+    val suffix = listOf(".tar.bz2", ".tar.gz", ".tar.xz", ".tbz2", ".tbz", ".tgz", ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz")
+        .firstOrNull { lower.endsWith(it) }
+    val base = if (suffix != null) name.dropLast(suffix.length) else name.substringBeforeLast('.', name)
+    return base.ifBlank { "Archive" }
+}
+
+private fun copySafSourceToLocal(
+    context: Context,
+    source: DocumentFile,
+    target: File,
+    budget: SafArchiveBridgeBudget,
+    depth: Int = 0
+) {
+    require(depth <= 64) { "Arborescence SAF trop profonde" }
+    require(source.exists() && source.canRead()) { "Lecture SAF refusée : ${source.name ?: "élément"}" }
+    val name = source.name ?: error("Un élément SAF n'a pas de nom")
+    require(isSafeArchiveLeafName(name)) { "Nom de fichier SAF invalide" }
+    budget.entries++
+    require(budget.entries <= SAF_ARCHIVE_MAX_SOURCE_ENTRIES) { "Trop d'éléments à compresser" }
+
+    if (source.isDirectory) {
+        require(target.mkdir()) { "Création temporaire impossible : $name" }
+        source.listFiles().sortedBy { it.name?.lowercase(Locale.ROOT) ?: "" }.forEach { child ->
+            val childName = child.name ?: error("Un élément SAF n'a pas de nom")
+            val safeChild = uniqueLocalArchiveName(target, childName)
+            copySafSourceToLocal(context, child, File(target, safeChild), budget, depth + 1)
+        }
+    } else {
+        require(source.isFile) { "Type SAF non pris en charge : $name" }
+        require(target.createNewFile()) { "Création temporaire impossible : $name" }
+        val input = context.contentResolver.openInputStream(source.uri) ?: error("Lecture impossible : $name")
+        input.use { stream ->
+            target.outputStream().use { output ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    budget.bytes += count
+                    require(budget.bytes <= SAF_ARCHIVE_MAX_SOURCE_BYTES) { "Sélection trop volumineuse pour être compressée" }
+                    output.write(buffer, 0, count)
                 }
             }
-            sources.forEach { source -> add(source, source.name ?: "Sans nom", 0) }
         }
-        return archive
-    } catch (error: Exception) {
-        deleteSafTree(archive)
-        throw error
     }
 }
 
-private fun extractSafZip(context: Context, archive: DocumentFile, targetParent: DocumentFile): Int {
+private fun copyLocalExtractedToSaf(
+    context: Context,
+    source: File,
+    targetParent: DocumentFile,
+    budget: SafArchiveBridgeBudget,
+    depth: Int = 0
+) {
+    require(depth <= 64) { "Arborescence extraite trop profonde" }
+    require(source.exists() && source.canonicalFile == source.absoluteFile) { "Lien ou chemin local interdit" }
+    val name = source.name
+    require(isSafeArchiveLeafName(name)) { "Nom extrait invalide" }
+    budget.entries++
+    require(budget.entries <= SAF_ARCHIVE_MAX_EXTRACT_ENTRIES) { "Trop d'éléments à copier vers SAF" }
+
+    if (source.isDirectory) {
+        val target = targetParent.createDirectory(name) ?: error("Création SAF impossible : $name")
+        source.listFiles()?.sortedBy { it.name.lowercase(Locale.ROOT) }?.forEach { child ->
+            copyLocalExtractedToSaf(context, child, target, budget, depth + 1)
+        }
+    } else {
+        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(source.extension.lowercase(Locale.ROOT))
+            ?: "application/octet-stream"
+        val target = targetParent.createFile(mime, name) ?: error("Création SAF impossible : $name")
+        try {
+            source.inputStream().use { input ->
+                val output = context.contentResolver.openOutputStream(target.uri, "w") ?: error("Écriture SAF impossible : $name")
+                output.use { stream ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        budget.bytes += count
+                        require(budget.bytes <= SAF_ARCHIVE_MAX_EXTRACT_BYTES) { "Limite de copie SAF dépassée" }
+                        stream.write(buffer, 0, count)
+                    }
+                }
+            }
+        } catch (error: Exception) {
+            target.delete()
+            throw error
+        }
+    }
+}
+
+private fun deleteSafArchiveTree(document: DocumentFile) {
+    if (document.isDirectory) document.listFiles().forEach { child ->
+        runCatching { deleteSafArchiveTree(child) }
+    }
+    document.delete()
+}
+
+private fun copySafArchiveToLocal(context: Context, archive: DocumentFile, work: File): File {
+    require(archive.exists() && archive.isFile && archive.canRead()) { "Archive SAF illisible" }
+    val name = archive.name ?: error("Archive sans nom")
+    require(isSafeArchiveLeafName(name)) { "Nom d'archive SAF invalide" }
+    val local = File(work, name)
     val input = context.contentResolver.openInputStream(archive.uri) ?: error("Lecture de l'archive impossible")
-    val created = mutableListOf<DocumentFile>()
-    val budget = SafZipBudget()
-    try {
-        ZipInputStream(BufferedInputStream(input)).use { zip ->
+    input.use { stream ->
+        local.outputStream().use { output ->
+            val buffer = ByteArray(64 * 1024)
+            var total = 0L
             while (true) {
-                val entry = zip.nextEntry ?: break
-                budget.entries++
-                if (budget.entries > 10000) error("Archive refusée : plus de 10 000 éléments")
-                val rawName = entry.name
-                if (rawName.isBlank() || rawName.startsWith('/') || rawName.startsWith('\\') || rawName.contains('\\') || rawName.contains('\u0000') || rawName.contains(':')) {
-                    error("Chemin interdit dans l'archive")
-                }
-                val parts = rawName.split('/').filter { it.isNotEmpty() }
-                if (parts.isEmpty() || parts.any { it == "." || it == ".." }) error("Chemin dangereux dans l'archive")
-                var parent = targetParent
-                val directoryParts = if (entry.isDirectory) parts else parts.dropLast(1)
-                for (part in directoryParts) {
-                    val existing = parent.findFile(part)
-                    parent = when {
-                        existing == null -> (parent.createDirectory(part) ?: error("Création du dossier $part impossible")).also { created.add(it) }
-                        existing.isDirectory -> existing
-                        else -> error("Conflit de type pour le dossier $part")
-                    }
-                }
-                if (!entry.isDirectory) {
-                    val requestedName = parts.last()
-                    val safeName = uniqueSafName(parent, requestedName)
-                    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(requestedName.substringAfterLast('.', "").lowercase()) ?: "application/octet-stream"
-                    val target = parent.createFile(mime, safeName) ?: error("Création du fichier $safeName impossible")
-                    created.add(target)
-                    try {
-                        val output = context.contentResolver.openOutputStream(target.uri, "w") ?: error("Écriture de $safeName impossible")
-                        output.use { stream ->
-                            val buffer = ByteArray(32 * 1024)
-                            var fileBytes = 0L
-                            while (true) {
-                                val count = zip.read(buffer)
-                                if (count < 0) break
-                                fileBytes += count
-                                budget.bytes += count
-                                if (fileBytes > 256L * 1024 * 1024 || budget.bytes > 512L * 1024 * 1024) {
-                                    error("Limite d'extraction dépassée")
-                                }
-                                stream.write(buffer, 0, count)
-                            }
-                        }
-                    } catch (error: Exception) {
-                        deleteSafTree(target)
-                        throw error
-                    }
-                }
-                zip.closeEntry()
+                val count = stream.read(buffer)
+                if (count < 0) break
+                total += count
+                require(total <= SAF_ARCHIVE_MAX_SOURCE_BYTES) { "Archive trop volumineuse pour le cache temporaire" }
+                output.write(buffer, 0, count)
             }
         }
-        return budget.entries
+    }
+    return local
+}
+
+private fun inspectSafArchive(context: Context, archive: DocumentFile): List<ArchiveEntryInfo> {
+    val work = newSafArchiveWorkDir(context)
+    return try {
+        ArchiveEngine.list(copySafArchiveToLocal(context, archive, work))
+    } finally {
+        work.deleteRecursively()
+    }
+}
+
+private fun extractSafArchive(
+    context: Context,
+    archive: DocumentFile,
+    targetParent: DocumentFile,
+    password: String? = null
+): Int {
+    val work = newSafArchiveWorkDir(context)
+    var targetRoot: DocumentFile? = null
+    try {
+        val localArchive = copySafArchiveToLocal(context, archive, work)
+        val extracted = File(work, "extracted")
+        val count = ArchiveEngine.extractSafely(localArchive, extracted, password)
+        val targetName = uniqueSafName(targetParent, archiveBaseNameForSaf(archive.name ?: localArchive.name))
+        targetRoot = targetParent.createDirectory(targetName) ?: error("Création du dossier d'extraction impossible")
+        val budget = SafArchiveBridgeBudget()
+        extracted.listFiles()?.sortedBy { it.name.lowercase(Locale.ROOT) }?.forEach { child ->
+            copyLocalExtractedToSaf(context, child, targetRoot!!, budget)
+        }
+        return count
     } catch (error: Exception) {
-        created.asReversed().forEach { runCatching { deleteSafTree(it) } }
+        targetRoot?.let { runCatching { deleteSafArchiveTree(it) } }
         throw error
+    } finally {
+        work.deleteRecursively()
+    }
+}
+
+private fun createSafArchive(
+    context: Context,
+    sources: List<DocumentFile>,
+    targetParent: DocumentFile,
+    format: ArchiveFormat,
+    password: String? = null
+): DocumentFile {
+    require(sources.isNotEmpty()) { "Sélectionne au moins un fichier ou dossier" }
+    val work = newSafArchiveWorkDir(context)
+    var targetArchive: DocumentFile? = null
+    try {
+        val inputDirectory = File(work, "sources")
+        require(inputDirectory.mkdir()) { "Dossier temporaire des sources indisponible" }
+        val budget = SafArchiveBridgeBudget()
+        val localSources = sources.map { source ->
+            val requestedName = source.name ?: error("Source SAF sans nom")
+            require(isSafeArchiveLeafName(requestedName)) { "Nom de source SAF invalide" }
+            val localName = uniqueLocalArchiveName(inputDirectory, requestedName)
+            File(inputDirectory, localName).also { copySafSourceToLocal(context, source, it, budget) }
+        }
+        val outputDirectory = File(work, "output")
+        require(outputDirectory.mkdir()) { "Dossier temporaire de sortie indisponible" }
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).format(Date())
+        val archiveFile = ArchiveEngine.create(localSources, outputDirectory, "ZERNEX_$stamp", format, password)
+        val targetName = uniqueSafName(targetParent, archiveFile.name)
+        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(archiveFile.extension.lowercase(Locale.ROOT))
+            ?: "application/octet-stream"
+        targetArchive = targetParent.createFile(mime, targetName) ?: error("Création de l'archive SAF impossible")
+        archiveFile.inputStream().use { input ->
+            val output = context.contentResolver.openOutputStream(targetArchive!!.uri, "w")
+                ?: error("Écriture de l'archive SAF impossible")
+            output.use { input.copyTo(it, 64 * 1024) }
+        }
+        return targetArchive!!
+    } catch (error: Exception) {
+        targetArchive?.let { runCatching { it.delete() } }
+        throw error
+    } finally {
+        work.deleteRecursively()
     }
 }
 

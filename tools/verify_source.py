@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static release checks for ZERNEX Files 1.0.3 (no Android SDK required)."""
+"""Static release checks for ZERNEX Files 2.0.0 (no Android SDK required)."""
 from pathlib import Path
 import re
 import sys
@@ -16,8 +16,12 @@ manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8
 main = (ROOT / "app/src/main/java/com/zernex/files/MainActivity.kt").read_text(encoding="utf-8")
 local = (ROOT / "app/src/main/java/com/zernex/files/AdvancedFileManager.kt").read_text(encoding="utf-8")
 saf = (ROOT / "app/src/main/java/com/zernex/files/SafFileManager.kt").read_text(encoding="utf-8")
+archive = (ROOT / "app/src/main/java/com/zernex/files/ArchiveEngine.kt").read_text(encoding="utf-8")
+archive_tests = ROOT / "app/src/test/java/com/zernex/files/ArchiveEngineTest.kt"
+visuals = (ROOT / "app/src/main/java/com/zernex/files/FileVisuals.kt").read_text(encoding="utf-8")
+visual_tests = ROOT / "app/src/test/java/com/zernex/files/FileVisualsTest.kt"
 
-check("version 1.0.4", 'versionName = "1.0.4"' in build)
+check("version 2.0.0", 'versionName = "2.0.0"' in build)
 check("Play target API 36", 'create("play")' in build and 'targetSdk = 36' in build)
 check("Android 10 legacy target API 29", 'create("android10Legacy")' in build and 'targetSdk = 29' in build and 'LEGACY_STORAGE", "true"' in build)
 check("manifest legacy placeholder", 'android:requestLegacyExternalStorage="${requestLegacyExternalStorage}"' in manifest)
@@ -25,13 +29,22 @@ check("special all-files permission", 'android.permission.MANAGE_EXTERNAL_STORAG
 check("API 30+ direct access check", 'Environment.isExternalStorageManager()' in local)
 check("API 29 legacy access check", 'Environment.isExternalStorageLegacy()' in local)
 check("SAF optional / not default on modern Android", 'ActivityResultContracts.OpenDocumentTree()' in local and 'if (mustUseSaf || useSafMode)' in local)
-check("visible breadcrumb and search", 'Text("ZERNEX Files"' in local and 'Icons.Default.Search' in local)
+check("visible brand mark, breadcrumb and search", "ZernexBrandMark()" in local and 'Icons.Default.Search' in local)
 check("multi-selection and bulk rename", 'Tout sélectionner' in local and 'bulk_rename' in local and 'renameLocalSelection' in local)
 check("copy/cut/paste protections", 'transferLocalFiles' in local and 'clipboardPaths.isEmpty()' in local)
-check("ZIP create and extraction guards", 'createZipArchive' in local and 'extractZipSafely' in local)
-check("colorful UI theme", all(token in main for token in ['0xFFFFB45C', '0xFF45D1C1', '0xFF9A8CFF']))
-check("high-contrast text palette", '0xFFFFFFFF' in main and '0xFFD0DAEA' in main and 'LocalContentColor provides MaterialTheme.colorScheme.onSurface' in main)
-check("colorful file-type icons", 'private fun fileAccent' in local and 'private fun safAccent' in saf and 'Brush.linearGradient' in saf)
+check("legacy ZIP implementation retained for compatibility", 'createZipArchive' in local and 'extractZipSafely' in local)
+check("ArchiveEngine ZIP/7Z/TAR formats", all(token in archive for token in ['ZIP("ZIP"', 'SEVEN_Z("7Z"', 'TAR_GZ("TAR.GZ"', 'TAR_BZ2("TAR.BZ2"', 'TAR_XZ("TAR.XZ"']))
+check("archive extraction rejects traversal and links", 'startsWith(rootPrefix)' in archive and 'isSymbolicLink' in archive and 'entryCount < MAX_ENTRIES' in archive)
+check("ZIP AES-256 password protection", 'AesKeyStrength.KEY_STRENGTH_256' in archive and 'EncryptionMethod.AES' in archive)
+check("7z memory cap", 'setMaxMemoryLimitKiB(MAX_7Z_MEMORY_KIB)' in archive)
+check("archive integration and explicit password UI", 'ArchiveEngine.create(' in local and 'ArchiveEngine.extractSafely(' in local and 'PasswordVisualTransformation()' in local)
+check("all archive formats use semantic icons and preview routing", 'ArchiveEngine.isSupportedName(file.name)' in local and 'return Icons.Default.FolderZip' in local)
+check("archive tests cover formats and Zip Slip", archive_tests.is_file() and all(token in archive_tests.read_text(encoding="utf-8") for token in ['zipSlipEntryIsRejected', 'sevenZipRoundTrip', 'aes256ZipRequiresPassword']))
+check("archive libraries pinned", all(token in build for token in ['commons-compress:1.28.0', 'xz:1.12', 'zip4j:2.11.6']))
+check("strict monochrome + red/green/yellow palette", all(token in main for token in ['0xFF0B0B0C', '0xFF151516', '0xFFE34D4D', '0xFF38C978', '0xFFF4C542']))
+check("high-contrast monochrome text palette", '0xFFF5F5F5' in main and '0xFFB8B8BA' in main and 'LocalContentColor provides MaterialTheme.colorScheme.onSurface' in main)
+check("semantic file icon system", 'private fun fileAccent' in local and 'private fun safAccent' in saf and "ZernexCategoryRail" in local and "ZernexBottomNavigation" in local)
+check("icon-led tools page", "ZernexToolsPage(" in local and all(token in visuals for token in ["Stockage", "Corbeille", "Doublons", "Dossier SAF"]))
 check("SAF persisted permission", 'takePersistableUriPermission' in local)
 check("SAF document browser", 'DocumentFile.fromTreeUri' in saf)
 check("no forced SAF API 29 in legacy build", 'Build.VERSION.SDK_INT == 29 && !BuildConfig.LEGACY_STORAGE' in local)
@@ -57,6 +70,17 @@ for path in xml_files:
         xml_ok = False
         checks.append((f"XML {path.relative_to(ROOT)}", False, str(exc)))
 check("all Android XML parses", xml_ok, f"{len(xml_files)} fichiers")
+check("V2 user and capability documentation", all((ROOT / path).is_file() for path in ["docs/GUIDE_UTILISATION_FR_2.0.0.md", "docs/FEATURES_AND_LIMITS_2.0.0.md", "docs/V2_DESIGN_SYSTEM.md", "docs/OPEN_SOURCE_RESEARCH_V2.md"]))
+launcher_icon = (ROOT / "app/src/main/res/drawable/ic_zernex_files.xml").read_text(encoding="utf-8")
+check("launcher icon follows monochrome and yellow palette", "#0B0B0C" in launcher_icon and "#F4C542" in launcher_icon and "#6D8CFF" not in launcher_icon)
+check("V2 file categories and semantic accents", all(token in visuals for token in ["ZernexFileCategory", "MEDIA", "DOCUMENT", "ARCHIVE", "APPLICATION", "zernexAccentFor"]))
+check("V2 file category tests", visual_tests.is_file() and all(token in visual_tests.read_text(encoding="utf-8") for token in ["directoryIsFolder", "mediaExtensionsShareRedCategory", "archiveExtensionsShareYellowCategory"]))
+check("SAF category rail and bottom navigation", "ZernexCategoryRail(selected = category" in saf and "ZernexSafBottomNavigation(" in saf)
+check("SAF multi-format archive bridge", all(token in saf for token in ["inspectSafArchive", "extractSafArchive", "createSafArchive", "ArchiveEngine.isSupportedName"]))
+saf_bridge_tests = ROOT / "app/src/test/java/com/zernex/files/SafArchiveBridgeTest.kt"
+check("SAF archive bridge path and naming tests", saf_bridge_tests.is_file() and all(token in saf_bridge_tests.read_text(encoding="utf-8") for token in ["archiveBaseNameForSaf", "archiveEntryNamesRejectTraversalAndSeparators"]))
+check("no multicolor gradients in file browsers", "Brush.linearGradient" not in local and "Brush.linearGradient" not in saf)
+check("no blue purple cyan or orange accents in main explorer", not any(token in local + saf + main for token in ["0xFF54B8FF", "0xFFB18CFF", "0xFF45D1C1", "0xFFFFB45C", "0xFF83B9FF"]))
 
 # Basic source integrity: delimiter balance after removing comments and quoted strings.
 def strip_kotlin(text):
@@ -70,7 +94,7 @@ def strip_kotlin(text):
     text = re.sub(r"//[^\n]*", " ", text)
     return text
 
-for path in sorted((ROOT / "app/src/main/java").rglob("*.kt")):
+for path in sorted(list((ROOT / "app/src/main/java").rglob("*.kt")) + list((ROOT / "app/src/test/java").rglob("*.kt"))):
     src = strip_kotlin(path.read_text(encoding="utf-8"))
     stack = []
     pairs = {')': '(', ']': '[', '}': '{'}

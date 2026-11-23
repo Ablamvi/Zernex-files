@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.0 — refonte visuelle et système d'icônes
+- Nouvelle identité monochrome noir/graphite/blanc avec trois accents stricts rouge, vert et jaune.
+- Remplacement des couleurs de catégories dispersées par un système sémantique commun local + SAF.
+- Icônes de fichiers simplifiées sur fond neutre, sans dégradés multicolores ; accent limité à un indicateur de catégorie.
+- Ajout d'un rail visuel de catégories à icônes pour filtrer directement les fichiers.
+- Ajout d'une navigation inférieure par icônes et d'une page Outils en tuiles visuelles ; parcours SAF doté de ses raccourcis Favoris/Corbeille/Réglages.
+- Intégration du moteur ArchiveEngine dans SAF : aperçu des entrées, extraction sécurisée et création ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ via cache temporaire borné.
+- Marque ZERNEX compacte et palette centralisée.
+- VersionName 2.0.0 / versionCode 2000.
+
+
+
+## 1.1.0 — moteur d’archives professionnel (branche de validation)
+- Ajout d’un moteur local multi-format : ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ ; décompression GZ/BZ2/XZ.
+- Création ZIP chiffrée AES-256 facultative (mot de passe minimum 8 caractères) et extraction avec mot de passe ZIP/7Z.
+- Ajout du choix du format, de l’aperçu du contenu et d’une extraction dans un nouveau dossier.
+- Renforcement extraction : validation canonique des chemins, rejet des traversées de répertoires, doublons et liens TAR, absence d’écrasement, plafonds d’entrées/tailles et rollback.
+- Ajout de tests de round-trip ZIP, ZIP AES-256, 7Z, TAR.GZ et attaque Zip Slip.
+- Version de l’application portée à 1.1.0 ; build/test CI élargis.
+- Limites explicites : RAR/RAR5, ISO, CAB, ARJ, ZST, multi-volumes, édition d’archives et parité multi-format SAF ne sont pas inclus.
+
+
+
 ## 1.0.4
 - Navigation plus claire : bouton « dossier parent » dans l’en-tête, retour progressif et accès direct à la racine via le fil d’Ariane « Stockage ».
 - Suppression des cases à cocher, boutons d’informations et menus à trois points sur chaque élément du navigateur local.
