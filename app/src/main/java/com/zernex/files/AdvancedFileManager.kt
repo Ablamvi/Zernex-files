@@ -699,7 +699,10 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
             }) { Icon(Icons.Default.ArrowUpward, contentDescription = "Dossier parent ou racine", tint = if (currentPath != sharedStorageRoot) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
             Spacer(Modifier.width(2.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("ZERNEX Files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    ZernexBrandMark()
+                    Text("ZERNEX Files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp)
+                }
                 val localPathParts = remember(currentPath, sharedStorageRoot) {
                     runCatching {
                         val relative = File(currentPath).canonicalFile.relativeTo(File(sharedStorageRoot).canonicalFile).path
@@ -776,6 +779,11 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                 }
             }
         }
+        ZernexCategoryRail(selected = searchType, onSelected = { category ->
+            searchType = category
+            advancedSearch = false
+            query = ""
+        })
         if (searchOpen) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Nom de fichier ou de dossier…") }, leadingIcon = { Icon(Icons.Default.Search, null) }, trailingIcon = { IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, null) } }); if (searchingFiles) LinearProgressIndicator(Modifier.fillMaxWidth()) }
         if (advancedSearch) Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1638,31 +1646,7 @@ private fun transferLocalFiles(
     return LocalTransferResult(completed, warnings, skipped, cancelled)
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-private fun fileAccent(file: File): Color {
-    if (file.isDirectory) return when (file.name.lowercase(Locale.ROOT)) {
-        "dcim", "pictures", "images" -> Color(0xFF54B8FF)
-        "music", "podcasts" -> Color(0xFFB18CFF)
-        "movies", "videos" -> Color(0xFFFF8B70)
-        "download", "downloads" -> Color(0xFF61D69B)
-        "documents" -> Color(0xFFFFC66D)
-        "android" -> Color(0xFF84C96B)
-        "alarms", "notifications", "ringtones" -> Color(0xFFFF78AA)
-        else -> Color(0xFFFFB45C)
-    }
-    return when (file.extension.lowercase(Locale.ROOT)) {
-        "pdf" -> Color(0xFFFF6F7F)
-        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "heic" -> Color(0xFF61D69B)
-        "mp4", "mkv", "mov", "webm", "avi" -> Color(0xFF54B8FF)
-        "mp3", "wav", "ogg", "flac", "m4a" -> Color(0xFFB18CFF)
-        "zip", "7z", "rar", "tar", "gz", "apk", "aab", "jar" -> Color(0xFFFFB45C)
-        "kt", "java", "js", "ts", "py", "json", "xml", "yml", "yaml", "html", "css" -> Color(0xFF45D1C1)
-        "doc", "docx", "odt", "rtf", "txt", "md" -> Color(0xFF83B9FF)
-        "xls", "xlsx", "csv", "ods" -> Color(0xFF67D6A0)
-        "ppt", "pptx", "odp" -> Color(0xFFFF987A)
-        else -> Color(0xFFA9B5CA)
-    }
-}
+private fun fileAccent(file: File): Color = zernexAccentFor(file.name, file.isDirectory)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -1675,9 +1659,9 @@ private fun FileListRow(file: File, isSelected: Boolean, compact: Boolean, showS
         java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(java.util.Date(file.lastModified()))
     }
     Surface(
-        color = if (isSelected) accent.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.42f),
+        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(15.dp),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp).border(1.dp, if (isSelected) accent.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.035f), RoundedCornerShape(15.dp)).animateContentSize()
+        modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp).border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.62f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), RoundedCornerShape(15.dp)).animateContentSize()
     ) {
         Row(
             Modifier.fillMaxWidth().graphicsLayer { scaleX = scale; scaleY = scale }
@@ -1712,9 +1696,9 @@ private fun FileGridCard(file: File, isSelected: Boolean, showSize: Boolean, sho
     val accent = fileAccent(file)
     val scale by animateFloatAsState(if (isSelected) 1.04f else 1f, label = "file-grid-scale")
     Surface(
-        color = if (isSelected) accent.copy(alpha = 0.19f) else MaterialTheme.colorScheme.surface,
+        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.border(1.dp, if (isSelected) accent.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.055f), RoundedCornerShape(20.dp)).animateContentSize().graphicsLayer { scaleX = scale; scaleY = scale }
+        modifier = Modifier.border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.62f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), RoundedCornerShape(16.dp)).animateContentSize().graphicsLayer { scaleX = scale; scaleY = scale }
     ) {
         Column(
             Modifier.fillMaxWidth().combinedClickable(onClick = { if (enabled) onClick() }, onLongClick = { if (enabled) onLongClick() }).padding(11.dp),
@@ -1740,23 +1724,29 @@ private fun FileGridCard(file: File, isSelected: Boolean, showSize: Boolean, sho
 private fun FileTypeIcon(file: File, size: androidx.compose.ui.unit.Dp, large: Boolean = false) {
     val accent = fileAccent(file)
     val icon = fileVisualIcon(file)
-    val pulse by animateFloatAsState(if (large) 1.04f else 1f, label = "file-icon-emphasis")
     Box(
-        Modifier.size(size).graphicsLayer { scaleX = pulse; scaleY = pulse }
-            .clip(RoundedCornerShape(if (large) 21.dp else 16.dp))
-            .background(Brush.linearGradient(listOf(accent.copy(alpha = 0.25f), accent.copy(alpha = 0.09f), MaterialTheme.colorScheme.surfaceVariant)))
-            .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(if (large) 21.dp else 16.dp)),
+        Modifier.size(size)
+            .clip(RoundedCornerShape(if (large) 15.dp else 12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(
+                width = 1.dp,
+                color = if (file.isDirectory) MaterialTheme.colorScheme.outlineVariant else accent.copy(alpha = 0.42f),
+                shape = RoundedCornerShape(if (large) 15.dp else 12.dp)
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Box(Modifier.align(Alignment.TopStart).padding(6.dp).size(if (large) 5.dp else 4.dp).background(accent.copy(alpha = 0.75f), RoundedCornerShape(50)))
-        Icon(icon, contentDescription = null, tint = accent,
-            modifier = Modifier.size(if (file.isDirectory) size * 0.72f else size * 0.54f))
-        if (file.isDirectory) {
-            Surface(Modifier.align(Alignment.BottomEnd).padding(4.dp), color = accent, shape = RoundedCornerShape(50)) {
-                Icon(Icons.Default.FolderOpen, null, tint = Color(0xFF172033), modifier = Modifier.padding(2.dp).size(if (large) 11.dp else 9.dp))
-            }
-        } else {
-            Box(Modifier.align(Alignment.BottomEnd).padding(6.dp).size(5.dp).background(accent, RoundedCornerShape(50)))
+        Icon(
+            imageVector = icon,
+            contentDescription = if (file.isDirectory) "Dossier" else "Fichier ${file.extension}",
+            tint = if (file.isDirectory) MaterialTheme.colorScheme.onSurface else accent,
+            modifier = Modifier.size(if (file.isDirectory) size * 0.70f else size * 0.58f)
+        )
+        if (!file.isDirectory) {
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(5.dp)
+                    .size(if (large) 7.dp else 6.dp)
+                    .background(accent, RoundedCornerShape(50))
+            )
         }
     }
 }
@@ -1867,7 +1857,7 @@ private class SyntaxColorTransformation(private val extension: String) : VisualT
             append(text)
             val source = text.text
             val wordRegex = Regex("\\b[A-Za-z_][A-Za-z0-9_]*\\b")
-            wordRegex.findAll(source).forEach { m -> if (m.value in keywords) addStyle(SpanStyle(color = Color(0xFF83C8FF), fontWeight = FontWeight.Bold), m.range.first, m.range.last + 1) }
+            wordRegex.findAll(source).forEach { m -> if (m.value in keywords) addStyle(SpanStyle(color = Color(0xFF38C978), fontWeight = FontWeight.Bold), m.range.first, m.range.last + 1) }
             Regex("//[^\\n]*|#[^\\n]*").findAll(source).forEach { addStyle(SpanStyle(color = Color(0xFF858585)), it.range.first, it.range.last + 1) }
             Regex("\"([^\"\\\\]|\\\\.)*\"|'([^'\\\\]|\\\\.)*'").findAll(source).forEach { addStyle(SpanStyle(color = Color(0xFFD6D6D6)), it.range.first, it.range.last + 1) }
             Regex("\\b[0-9]+(\\.[0-9]+)?\\b").findAll(source).forEach { addStyle(SpanStyle(color = Color(0xFFAAAAAA)), it.range.first, it.range.last + 1) }
