@@ -21,4 +21,8 @@ Les projets suivants sont des références de recherche uniquement ; leur code n
 - Sora Editor — LGPL-2.1-or-later : https://github.com/Rosemoe/sora-editor (non intégré dans cette préversion)
 - Shizuku API — Apache-2.0 : https://github.com/RikkaApps/Shizuku-API (non intégré dans cette préversion)
 
+- MTExplorer — MIT : https://github.com/r0ld3x/MTExplorer (référence de recherche pour les modèles de fichiers, les panneaux et la barre d'actions ; aucun code repris dans cette version).
+
+Les projets GPL/AGPL examinés (Material Files, Amaze, Prism et Strata) ont été utilisés comme références fonctionnelles uniquement. Aucun code GPL/AGPL n'est copié dans ce dépôt Apache-2.0.
+
 Cette liste est informative et ne remplace pas les fichiers de licence et notices fournis par les artefacts Maven effectivement résolus lors de la compilation.
