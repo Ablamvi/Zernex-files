@@ -946,7 +946,7 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
       }
       if (selected.isNotEmpty()) {
         Surface(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             shadowElevation = 10.dp,
