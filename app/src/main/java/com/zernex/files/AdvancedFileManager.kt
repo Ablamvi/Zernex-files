@@ -488,6 +488,30 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
         }
     }
 
+    if (dialog == "tools") {
+        ZernexToolsPage(
+            onBack = { dialog = "" },
+            onStorage = { storageSummary = readStorageSummary(Environment.getExternalStorageDirectory()); dialog = "storage" },
+            onTrash = { trashItems = loadTrash(context); dialog = "trash" },
+            onDuplicates = {
+                busy = true
+                operationLabel = "Recherche des doublons…"
+                Thread {
+                    val groups = findDuplicateGroups(Environment.getExternalStorageDirectory())
+                    Handler(Looper.getMainLooper()).post {
+                        duplicateGroups = groups
+                        busy = false
+                        dialog = "duplicates"
+                    }
+                }.start()
+            },
+            onPermissions = { dialog = "permissions" },
+            onSettings = { dialog = "settings" },
+            onChooseSaf = { dialog = ""; onChooseSaf() }
+        )
+        return
+    }
+
     if (previewFile != null) {
         FilePreviewScreen(previewFile!!, onClose = { previewFile = null })
         return
@@ -873,7 +897,7 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                 }
             }
         } else if (layout == BrowserLayout.LIST) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 112.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 112.dp else 88.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 items(files, key = { it.absolutePath }) { file ->
                     val toggleSelection: () -> Unit = { if (!busy) { if (selected.contains(file.absolutePath)) selected.remove(file.absolutePath) else selected.add(file.absolutePath) } }
                     FileListRow(
@@ -896,7 +920,7 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                 }
             }
         } else {
-            LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 112.dp), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 132.dp else 20.dp)) {
+            LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 112.dp), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = if (selected.isNotEmpty()) 132.dp else 96.dp)) {
                 gridItems(files, key = { it.absolutePath }) { file ->
                     val toggleSelection: () -> Unit = { if (!busy) { if (selected.contains(file.absolutePath)) selected.remove(file.absolutePath) else selected.add(file.absolutePath) } }
                     FileGridCard(
@@ -962,6 +986,15 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
                 }
             }
         }
+      }
+      if (selected.isEmpty()) {
+        ZernexBottomNavigation(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            onFiles = { dialog = "" },
+            onRecent = { dialog = "recent" },
+            onFavorites = { dialog = "favorites" },
+            onTools = { dialog = "tools" }
+        )
       }
 
     }
