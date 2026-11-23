@@ -19,7 +19,7 @@ Fonctions héritées de 1.1.0 :
 - Gestion des fichiers locaux et SAF, sélection multiple, copie/déplacement, renommage groupé.
 - Corbeille, favoris, récents, recherche, tri, propriétés et doublons.
 - Aperçus médias et éditeur texte.
-- Moteur local ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ et GZ/BZ2/XZ.
+- Moteur d’archives multi-format local + SAF : ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ et décompression GZ/BZ2/XZ ; création, aperçu, extraction, mot de passe ZIP AES-256.
 - ZIP AES-256 facultatif et extraction protégée.
 
 Validation :
