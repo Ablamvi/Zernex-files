@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 — moteur d’archives professionnel (branche de validation)
+- Ajout d’un moteur local multi-format : ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ ; décompression GZ/BZ2/XZ.
+- Création ZIP chiffrée AES-256 facultative (mot de passe minimum 8 caractères) et extraction avec mot de passe ZIP/7Z.
+- Ajout du choix du format, de l’aperçu du contenu et d’une extraction dans un nouveau dossier.
+- Renforcement extraction : validation canonique des chemins, rejet des traversées de répertoires, doublons et liens TAR, absence d’écrasement, plafonds d’entrées/tailles et rollback.
+- Ajout de tests de round-trip ZIP, ZIP AES-256, 7Z, TAR.GZ et attaque Zip Slip.
+- Version de l’application portée à 1.1.0 ; build/test CI élargis.
+- Limites explicites : RAR/RAR5, ISO, CAB, ARJ, ZST, multi-volumes, édition d’archives et parité multi-format SAF ne sont pas inclus.
+
+
+
 ## 1.0.4
 - Navigation plus claire : bouton « dossier parent » dans l’en-tête, retour progressif et accès direct à la racine via le fil d’Ariane « Stockage ».
 - Suppression des cases à cocher, boutons d’informations et menus à trois points sur chaque élément du navigateur local.
