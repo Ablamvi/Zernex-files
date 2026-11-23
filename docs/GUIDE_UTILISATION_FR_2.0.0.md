@@ -38,7 +38,7 @@ L'extraction refuse les chemins absolus, traversées, liens et collisions, et ap
 
 ## 5. SAF et stockage amovible
 
-SAF est le mode Android qui donne accès au dossier que tu sélectionnes. Le fournisseur Android peut limiter certaines opérations. Dans la version 2.0.0, le mode SAF propose les actions de fichiers et ZIP déjà présentes ; le moteur d'archives multi-format avancé est intégré au navigateur local. Cette différence est affichée dans la matrice des fonctions.
+SAF est le mode Android qui donne accès au dossier que tu sélectionnes. Le fournisseur Android peut limiter certaines opérations. La version 2.0.0 utilise le même moteur d'archives multi-format que le navigateur local : ouvre une archive pour voir ses entrées, saisis un mot de passe si nécessaire, puis extrais-la dans un nouveau dossier. La création SAF propose ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ. Les fichiers sources sont copiés temporairement dans le cache privé, avec limites, puis le résultat est écrit dans le dossier SAF choisi.
 
 ## 6. Outils et navigation
 
