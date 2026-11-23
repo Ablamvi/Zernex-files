@@ -57,6 +57,7 @@ internal object ArchiveEngine {
     private const val MAX_TOTAL_BYTES = 512L * 1024L * 1024L
     private const val MAX_SOURCE_ENTRIES = 50_000
     private const val MAX_SOURCE_BYTES = 8L * 1024L * 1024L * 1024L
+    private const val MAX_7Z_MEMORY_KIB = 256 * 1024
 
     private enum class Kind { ZIP, SEVEN_Z, TAR, TAR_GZ, TAR_BZ2, TAR_XZ, GZIP, BZIP2, XZ }
 
@@ -332,7 +333,9 @@ internal object ArchiveEngine {
     }
 
     private fun extractSevenZ(archive: File, password: String?, writer: SafeExtractWriter) {
-        val builder = SevenZFile.builder().setFile(archive)
+        val builder = SevenZFile.builder()
+            .setFile(archive)
+            .setMaxMemoryLimitKiB(MAX_7Z_MEMORY_KIB)
         if (!password.isNullOrEmpty()) builder.setPassword(password.toCharArray())
         builder.get().use { seven ->
             while (true) {
@@ -378,7 +381,9 @@ internal object ArchiveEngine {
     }
 
     private fun openSevenZ(file: File, password: String?): SevenZFile {
-        val builder = SevenZFile.builder().setFile(file)
+        val builder = SevenZFile.builder()
+            .setFile(file)
+            .setMaxMemoryLimitKiB(MAX_7Z_MEMORY_KIB)
         if (!password.isNullOrEmpty()) builder.setPassword(password.toCharArray())
         return builder.get()
     }
