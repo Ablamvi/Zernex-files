@@ -507,7 +507,7 @@ private fun LocalFileManagerScreen(onChooseSaf: () -> Unit) {
             },
             onPermissions = { dialog = "permissions" },
             onSettings = { dialog = "settings" },
-            onChooseSaf = { dialog = ""; treePicker.launch(treeUriString?.let { Uri.parse(it) }) }
+            onChooseSaf = { dialog = ""; onChooseSaf() }
         )
         return
     }
