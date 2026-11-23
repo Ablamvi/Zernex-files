@@ -47,12 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.io.File
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
 import java.security.MessageDigest
 
 private enum class SafSort { NAME, SIZE, DATE, TYPE }
@@ -1311,8 +1306,6 @@ private fun deleteSafTrash(root: DocumentFile?, record: SafTrashRecord): Boolean
 private fun isSafImageFile(name: String): Boolean = name.substringAfterLast('.', "").lowercase(Locale.ROOT) in
     setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "avif")
 
-private fun isSafZipFile(name: String): Boolean = name.endsWith(".zip", ignoreCase = true)
-
 private fun isSafTextFile(name: String): Boolean = name.substringAfterLast('.', "").lowercase(Locale.ROOT) in
     setOf("txt", "md", "csv", "json", "xml", "html", "htm", "log", "ini", "conf", "properties", "kt", "java", "js", "css", "yaml", "yml", "sh", "py")
 
@@ -1401,7 +1394,7 @@ private fun newSafArchiveWorkDir(context: Context): File {
     return work
 }
 
-private fun isSafeArchiveLeafName(name: String): Boolean =
+internal fun isSafeArchiveLeafName(name: String): Boolean =
     name.isNotBlank() && name !in setOf(".", "..") &&
         !name.contains('/') && !name.contains('\\') &&
         !name.contains(':') && !name.contains('\u0000')
@@ -1419,7 +1412,7 @@ private fun uniqueLocalArchiveName(parent: File, requested: String): String {
     error("Trop de fichiers portent un nom similaire")
 }
 
-private fun archiveBaseName(name: String): String {
+internal fun archiveBaseNameForSaf(name: String): String {
     val lower = name.lowercase(Locale.ROOT)
     val suffix = listOf(".tar.bz2", ".tar.gz", ".tar.xz", ".tbz2", ".tbz", ".tgz", ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz")
         .firstOrNull { lower.endsWith(it) }
@@ -1561,7 +1554,7 @@ private fun extractSafArchive(
         val localArchive = copySafArchiveToLocal(context, archive, work)
         val extracted = File(work, "extracted")
         val count = ArchiveEngine.extractSafely(localArchive, extracted, password)
-        val targetName = uniqueSafName(targetParent, archiveBaseName(archive.name ?: localArchive.name))
+        val targetName = uniqueSafName(targetParent, archiveBaseNameForSaf(archive.name ?: localArchive.name))
         targetRoot = targetParent.createDirectory(targetName) ?: error("Création du dossier d'extraction impossible")
         val budget = SafArchiveBridgeBudget()
         extracted.listFiles()?.sortedBy { it.name.lowercase(Locale.ROOT) }?.forEach { child ->
