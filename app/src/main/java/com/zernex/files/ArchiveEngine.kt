@@ -447,11 +447,14 @@ internal object ArchiveEngine {
             ensureParentDirectories(parent)
             require(target.createNewFile()) { "Création du fichier impossible : $relative" }
             created.add(target)
+            currentEntryBytes = 0L
             try {
                 BufferedOutputStream(FileOutputStream(target), BUFFER_SIZE).use(write)
             } catch (error: Throwable) {
                 target.delete()
                 throw error
+            } finally {
+                currentEntryBytes = 0L
             }
             entryCount++
         }
@@ -495,12 +498,13 @@ internal object ArchiveEngine {
             }
             val relative = parts.joinToString("/")
             val target = File(root, parts.joinToString(File.separator)).canonicalFile
-            require(target.path.startsWith(root.path + File.separator)) { "Chemin d'extraction dangereux : $rawName" }
+            val rootPrefix = root.path.let { if (it.endsWith(File.separator)) it else it + File.separator }
+            require(target.path.startsWith(rootPrefix)) { "Chemin d'extraction dangereux : $rawName" }
             return (if (isDirectory) "$relative/" else relative) to target
         }
 
         private fun register(relative: String) {
-            require(seen.add(relative.lowercase(Locale.ROOT))) { "Entrée en double : $relative" }
+            require(seen.add(relative.trimEnd('/').lowercase(Locale.ROOT))) { "Entrée en double : $relative" }
             require(entryCount < MAX_ENTRIES) { "Trop d'entrées dans l'archive (maximum $MAX_ENTRIES)" }
         }
 
