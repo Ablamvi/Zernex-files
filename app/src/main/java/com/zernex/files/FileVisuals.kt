@@ -1,5 +1,6 @@
 package com.zernex.files
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -19,8 +21,17 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -107,6 +118,58 @@ internal fun ZernexCategoryRail(selected: String, onSelected: (String) -> Unit) 
                 Icon(item.icon, contentDescription = item.label, tint = if (active) MaterialTheme.colorScheme.onPrimary else item.accent, modifier = Modifier.size(20.dp))
                 Text(item.label, color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1)
             }
+        }
+    }
+}
+
+@Composable
+internal fun ZernexBottomNavigation(
+    modifier: Modifier = Modifier,
+    onFiles: () -> Unit,
+    onRecent: () -> Unit,
+    onFavorites: () -> Unit,
+    onTools: () -> Unit
+) {
+    NavigationBar(modifier = modifier, containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, tonalElevation = 0.dp) {
+        NavigationBarItem(selected = true, onClick = onFiles, icon = { Icon(Icons.Default.FolderOpen, contentDescription = "Fichiers") }, label = { Text("Fichiers", fontSize = 10.sp) })
+        NavigationBarItem(selected = false, onClick = onRecent, icon = { Icon(Icons.Default.Image, contentDescription = "Récents") }, label = { Text("Récents", fontSize = 10.sp) })
+        NavigationBarItem(selected = false, onClick = onFavorites, icon = { Icon(Icons.Default.FolderSpecial, contentDescription = "Favoris") }, label = { Text("Favoris", fontSize = 10.sp) })
+        NavigationBarItem(selected = false, onClick = onTools, icon = { Icon(Icons.Default.Settings, contentDescription = "Outils") }, label = { Text("Outils", fontSize = 10.sp) })
+    }
+}
+
+@Composable
+internal fun ZernexToolsPage(
+    onBack: () -> Unit, onStorage: () -> Unit, onTrash: () -> Unit,
+    onDuplicates: () -> Unit, onPermissions: () -> Unit,
+    onSettings: () -> Unit, onChooseSaf: () -> Unit
+) {
+    ZernexPageScaffold(title = "Outils", subtitle = "Actions et entretien du stockage", onBack = onBack) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ZernexToolCard(Modifier.weight(1f), "Stockage", Icons.Default.Storage, Color(0xFFF4C542), onStorage)
+                ZernexToolCard(Modifier.weight(1f), "Corbeille", Icons.Default.DeleteSweep, Color(0xFFE34D4D), onTrash)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ZernexToolCard(Modifier.weight(1f), "Doublons", Icons.Default.ContentCopy, Color(0xFF38C978), onDuplicates)
+                ZernexToolCard(Modifier.weight(1f), "Accès", Icons.Default.Security, MaterialTheme.colorScheme.onSurfaceVariant, onPermissions)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ZernexToolCard(Modifier.weight(1f), "Paramètres", Icons.Default.Settings, MaterialTheme.colorScheme.onSurfaceVariant, onSettings)
+                ZernexToolCard(Modifier.weight(1f), "Dossier SAF", Icons.Default.FolderSpecial, MaterialTheme.colorScheme.onSurfaceVariant, onChooseSaf)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZernexToolCard(modifier: Modifier, label: String, icon: ImageVector, accent: Color, onClick: () -> Unit) {
+    Surface(modifier = modifier.clickable(onClick = onClick), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = label, tint = accent, modifier = Modifier.size(23.dp))
+            }
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
