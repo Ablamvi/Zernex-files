@@ -75,6 +75,9 @@ check("launcher icon follows monochrome and yellow palette", "#0B0B0C" in launch
 check("V2 file categories and semantic accents", all(token in visuals for token in ["ZernexFileCategory", "MEDIA", "DOCUMENT", "ARCHIVE", "APPLICATION", "zernexAccentFor"]))
 check("V2 file category tests", visual_tests.is_file() and all(token in visual_tests.read_text(encoding="utf-8") for token in ["directoryIsFolder", "mediaExtensionsShareRedCategory", "archiveExtensionsShareYellowCategory"]))
 check("SAF category rail and bottom navigation", "ZernexCategoryRail(selected = category" in saf and "ZernexSafBottomNavigation(" in saf)
+check("SAF multi-format archive bridge", all(token in saf for token in ["inspectSafArchive", "extractSafArchive", "createSafArchive", "ArchiveEngine.isSupportedName"]))
+saf_bridge_tests = ROOT / "app/src/test/java/com/zernex/files/SafArchiveBridgeTest.kt"
+check("SAF archive bridge path and naming tests", saf_bridge_tests.is_file() and all(token in saf_bridge_tests.read_text(encoding="utf-8") for token in ["archiveBaseNameForSaf", "archiveEntryNamesRejectTraversalAndSeparators"]))
 check("no multicolor gradients in file browsers", "Brush.linearGradient" not in local and "Brush.linearGradient" not in saf)
 check("no blue purple cyan or orange accents in main explorer", not any(token in local + saf + main for token in ["0xFF54B8FF", "0xFFB18CFF", "0xFF45D1C1", "0xFFFFB45C", "0xFF83B9FF"]))
 
