@@ -1798,6 +1798,7 @@ private fun fileVisualIcon(file: File): androidx.compose.ui.graphics.vector.Imag
         "ringtones" -> Icons.Default.MusicNote
         else -> Icons.Default.Folder
     }
+    if (ArchiveEngine.isSupportedName(file.name)) return Icons.Default.FolderZip
     return when (file.extension.lowercase(Locale.ROOT)) {
         "pdf" -> Icons.Default.PictureAsPdf
         "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg" -> Icons.Default.Image
@@ -1815,6 +1816,10 @@ private fun fileVisualIcon(file: File): androidx.compose.ui.graphics.vector.Imag
 }
 
 private fun openFile(file: File, onPreview: () -> Unit, onEdit: () -> Unit) {
+    if (ArchiveEngine.isSupportedName(file.name)) {
+        onPreview()
+        return
+    }
     when (file.extension.lowercase()) {
         "txt", "md", "json", "xml", "html", "htm", "css", "js", "ts", "kt", "java", "py", "sh", "yml", "yaml", "toml", "ini", "properties", "gradle", "sql", "c", "cpp", "h", "rs", "go", "dart", "php", "rb", "swift", "log", "conf" -> onEdit()
         "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "pdf", "mp4", "mkv", "webm", "mov", "mp3", "wav", "ogg", "flac", "m4a", "jks", "keystore", "jceks", "p12", "pfx", "bks", "pem", "crt", "cer", "der", "zip", "7z", "tar", "tgz", "gz", "bz2", "xz", "tbz", "tbz2", "txz" -> onPreview()
