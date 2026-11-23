@@ -9,19 +9,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.LocalContentColor
 
-/** Palette principale : surfaces bleu nuit, accents chauds et couleurs de fichiers. */
+/**
+ * ZERNEX Files 2.0 visual contract:
+ * near-black / graphite surfaces, white text, and exactly three semantic accents.
+ */
 internal object ZernexPalette {
-    val background = Color(0xFF101522)
-    val surface = Color(0xFF192235)
-    val surfaceVariant = Color(0xFF242F45)
-    val primary = Color(0xFFFFB45C)
-    val secondary = Color(0xFF45D1C1)
-    val tertiary = Color(0xFF9A8CFF)
-    val blue = Color(0xFF68B9FF)
-    val green = Color(0xFF62D49A)
-    val red = Color(0xFFFF7185)
-    val text = Color(0xFFFFFFFF)
-    val muted = Color(0xFFD0DAEA)
+    val background = Color(0xFF0B0B0C)
+    val surface = Color(0xFF151516)
+    val surfaceVariant = Color(0xFF222224)
+    val primary = Color(0xFFF4C542)   // yellow: primary action / focus
+    val secondary = Color(0xFF38C978) // green: documents / success
+    val tertiary = Color(0xFFE34D4D)  // red: media / destructive / warning
+    val yellow = Color(0xFFF4C542)
+    val green = Color(0xFF38C978)
+    val red = Color(0xFFE34D4D)
+    val text = Color(0xFFF5F5F5)
+    val muted = Color(0xFFB8B8BA)
+    val divider = Color(0xFF343437)
 }
 
 class MainActivity : ComponentActivity() {
@@ -31,31 +35,32 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = ZernexPalette.primary,
-                    onPrimary = Color(0xFF2B1A08),
-                    primaryContainer = Color(0xFF4C3219),
-                    onPrimaryContainer = Color(0xFFFFDDB8),
+                    onPrimary = Color(0xFF171307),
+                    primaryContainer = Color(0xFF3D310A),
+                    onPrimaryContainer = Color(0xFFFFE9A3),
                     secondary = ZernexPalette.secondary,
-                    onSecondary = Color(0xFF062B27),
-                    secondaryContainer = Color(0xFF123F3A),
-                    onSecondaryContainer = Color(0xFFB8FFF4),
+                    onSecondary = Color(0xFF06180D),
+                    secondaryContainer = Color(0xFF10331F),
+                    onSecondaryContainer = Color(0xFFB9F5D0),
                     tertiary = ZernexPalette.tertiary,
-                    onTertiary = Color(0xFF211A48),
+                    onTertiary = Color(0xFF210707),
+                    tertiaryContainer = Color(0xFF451414),
+                    onTertiaryContainer = Color(0xFFFFDAD7),
                     background = ZernexPalette.background,
                     surface = ZernexPalette.surface,
                     surfaceVariant = ZernexPalette.surfaceVariant,
                     onBackground = ZernexPalette.text,
                     onSurface = ZernexPalette.text,
                     onSurfaceVariant = ZernexPalette.muted,
-                    inverseSurface = Color(0xFFE7ECF5),
-                    inverseOnSurface = Color(0xFF182033),
+                    inverseSurface = Color(0xFFE7E7E8),
+                    inverseOnSurface = Color(0xFF171718),
                     surfaceTint = ZernexPalette.primary,
-                    outline = Color(0xFF53627B),
-                    outlineVariant = Color(0xFF344158),
+                    outline = Color(0xFF66666A),
+                    outlineVariant = ZernexPalette.divider,
                     error = ZernexPalette.red,
-                    onError = Color(0xFF3A0710)
+                    onError = Color(0xFF210707)
                 )
             ) {
-                // Texte par défaut clair : évite les libellés noirs hérités dans les composants personnalisés.
                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                     AdvancedFileManagerScreen()
                 }
