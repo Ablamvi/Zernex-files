@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0 — refonte visuelle et système d'icônes
+- Nouvelle identité monochrome noir/graphite/blanc avec trois accents stricts rouge, vert et jaune.
+- Remplacement des couleurs de catégories dispersées par un système sémantique commun local + SAF.
+- Icônes de fichiers simplifiées sur fond neutre, sans dégradés multicolores ; accent limité à un indicateur de catégorie.
+- Ajout d'un rail visuel de catégories à icônes pour filtrer directement les fichiers.
+- Marque ZERNEX compacte et palette centralisée.
+- VersionName 2.0.0 / versionCode 2000.
+
+
+
 ## 1.1.0 — moteur d’archives professionnel (branche de validation)
 - Ajout d’un moteur local multi-format : ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ ; décompression GZ/BZ2/XZ.
 - Création ZIP chiffrée AES-256 facultative (mot de passe minimum 8 caractères) et extraction avec mot de passe ZIP/7Z.
