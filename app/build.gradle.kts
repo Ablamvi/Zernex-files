@@ -19,8 +19,8 @@ android {
         applicationId = "com.zernex.files"
         minSdk = 23
         targetSdk = 36
-        versionCode = 1100
-        versionName = "1.1.0"
+        versionCode = 2000
+        versionName = "2.0.0"
         manifestPlaceholders["requestLegacyExternalStorage"] = "false"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
     }
@@ -34,15 +34,15 @@ android {
         create("play") {
             dimension = "distribution"
             targetSdk = 36
-            versionCode = 1100
+            versionCode = 2000
             buildConfigField("boolean", "LEGACY_STORAGE", "false")
             manifestPlaceholders["requestLegacyExternalStorage"] = "false"
         }
         create("android10Legacy") {
             dimension = "distribution"
             targetSdk = 29
-            versionCode = 1100
-            versionName = "1.1.0"
+            versionCode = 2000
+            versionName = "2.0.0"
             buildConfigField("boolean", "LEGACY_STORAGE", "true")
             manifestPlaceholders["requestLegacyExternalStorage"] = "true"
         }
