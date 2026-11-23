@@ -38,6 +38,7 @@ check("archive extraction rejects traversal and links", 'startsWith(rootPrefix)'
 check("ZIP AES-256 password protection", 'AesKeyStrength.KEY_STRENGTH_256' in archive and 'EncryptionMethod.AES' in archive)
 check("7z memory cap", 'setMaxMemoryLimitKiB(MAX_7Z_MEMORY_KIB)' in archive)
 check("archive integration and explicit password UI", 'ArchiveEngine.create(' in local and 'ArchiveEngine.extractSafely(' in local and 'PasswordVisualTransformation()' in local)
+check("all archive formats use semantic icons and preview routing", 'ArchiveEngine.isSupportedName(file.name)' in local and 'return Icons.Default.FolderZip' in local)
 check("archive tests cover formats and Zip Slip", archive_tests.is_file() and all(token in archive_tests.read_text(encoding="utf-8") for token in ['zipSlipEntryIsRejected', 'sevenZipRoundTrip', 'aes256ZipRequiresPassword']))
 check("archive libraries pinned", all(token in build for token in ['commons-compress:1.28.0', 'xz:1.12', 'zip4j:2.11.6']))
 check("strict monochrome + red/green/yellow palette", all(token in main for token in ['0xFF0B0B0C', '0xFF151516', '0xFFE34D4D', '0xFF38C978', '0xFFF4C542']))
