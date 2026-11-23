@@ -6,6 +6,7 @@
 - Icônes de fichiers simplifiées sur fond neutre, sans dégradés multicolores ; accent limité à un indicateur de catégorie.
 - Ajout d'un rail visuel de catégories à icônes pour filtrer directement les fichiers.
 - Ajout d'une navigation inférieure par icônes et d'une page Outils en tuiles visuelles ; parcours SAF doté de ses raccourcis Favoris/Corbeille/Réglages.
+- Intégration du moteur ArchiveEngine dans SAF : aperçu des entrées, extraction sécurisée et création ZIP/7Z/TAR/TAR.GZ/TAR.BZ2/TAR.XZ via cache temporaire borné.
 - Marque ZERNEX compacte et palette centralisée.
 - VersionName 2.0.0 / versionCode 2000.
 
