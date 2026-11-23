@@ -56,30 +56,10 @@ import java.security.MessageDigest
 private enum class SafSort { NAME, SIZE, DATE, TYPE }
 private enum class SafLayout { LIST, GRID }
 
-/** File-type accent palette shared by SAF rows/cards and preview headers. */
-private fun safAccent(entry: SafEntry): Color {
-    if (entry.isDirectory) return when (entry.name.lowercase(Locale.ROOT)) {
-        "dcim", "pictures", "images" -> Color(0xFF54B8FF)
-        "music", "podcasts" -> Color(0xFFB18CFF)
-        "movies", "videos" -> Color(0xFFFF8B70)
-        "download", "downloads" -> Color(0xFF61D69B)
-        "documents" -> Color(0xFFFFC66D)
-        "android" -> Color(0xFF84C96B)
-        else -> Color(0xFFFFB45C)
-    }
-    return when (entry.name.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
-        "pdf" -> Color(0xFFFF6F7F)
-        "jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "heic" -> Color(0xFF61D69B)
-        "mp4", "mkv", "mov", "webm", "avi" -> Color(0xFF54B8FF)
-        "mp3", "wav", "ogg", "flac", "m4a" -> Color(0xFFB18CFF)
-        "zip", "7z", "rar", "tar", "gz", "apk", "aab", "jar" -> Color(0xFFFFB45C)
-        "kt", "java", "js", "ts", "py", "json", "xml", "yml", "yaml", "html", "css" -> Color(0xFF45D1C1)
-        "doc", "docx", "odt", "rtf", "txt", "md" -> Color(0xFF83B9FF)
-        "xls", "xlsx", "csv", "ods" -> Color(0xFF67D6A0)
-        "ppt", "pptx", "odp" -> Color(0xFFFF987A)
-        else -> Color(0xFFA9B5CA)
-    }
-}
+/** Shared three-accent semantic palette for local and SAF file entries. */
+private fun safAccent(entry: SafEntry): Color =
+    zernexAccentFor(entry.name, entry.isDirectory)
+
 
 private data class SafEntry(
     val document: DocumentFile,
