@@ -1713,7 +1713,7 @@ private fun FileListRow(file: File, isSelected: Boolean, compact: Boolean, showS
                         if (count == 0) "Dossier vide" else "$count éléments"
                     } else listOfNotNull(ext.uppercase().ifBlank { "FICHIER" }.takeIf { showSize.not() }, formatSize(file.length()).takeIf { showSize }).joinToString(" • "),
                     maxLines = 1, style = MaterialTheme.typography.labelSmall,
-                    color = accent.copy(alpha = 0.95f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (showDate) Text(modified, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -1747,7 +1747,7 @@ private fun FileGridCard(file: File, isSelected: Boolean, showSize: Boolean, sho
             Text(file.name, maxLines = 2, minLines = 2, style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold)
             if (showSize) Text(if (file.isDirectory) "Dossier" else formatSize(file.length()),
-                style = MaterialTheme.typography.labelSmall, color = accent)
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (showDate) Text(java.text.SimpleDateFormat("dd/MM/yy", Locale.getDefault()).format(java.util.Date(file.lastModified())), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
