@@ -21,3 +21,8 @@ Le dépôt ZERNEX Files est Apache-2.0. Copier des fichiers de projets GPL/AGPL 
 - Actions groupées et navigation guidées par icônes.
 - Séparation progressive entre moteur d'opérations, navigation, rendu et préférences.
 - Toute fonction annoncée doit être implémentée et testée, sinon elle reste listée comme non disponible.
+
+
+## Vérification RAR
+
+Junrar a été examiné comme candidat RAR/RAR5. Son README annonce RAR jusqu'à v7, mots de passe et archives multi-volumes, mais indique explicitement que son code ne peut pas servir à développer un archiveur compatible RAR/WinRAR. ZERNEX Files n'intègre donc pas Junrar ; l'ajouter sans avis juridique clair serait une mauvaise décision. La prise en charge RAR reste absente jusqu'à sélection d'un moteur dont la licence autorise explicitement cet usage. Référence : https://github.com/junrar/junrar
