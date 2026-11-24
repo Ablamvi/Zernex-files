@@ -33,8 +33,8 @@ Le moteur avancé d’archives est disponible dans le navigateur de stockage loc
 
 Environnement requis : JDK 17, Android SDK API 36 et Build Tools 36.0.0.
 
-- Tests unitaires : ./gradlew :app:testPlayDebugUnitTest
-- Lint et deux compilations : ./gradlew :app:lintPlayRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
+- Tests unitaires : ./gradlew :app:testPlayDebugUnitTest :app:testAndroid10LegacyDebugUnitTest
+- Lint et deux compilations : ./gradlew :app:testPlayDebugUnitTest :app:testAndroid10LegacyDebugUnitTest :app:lintPlayRelease :app:lintAndroid10LegacyRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
 
 Les APK sont générés sous app/build/outputs/apk/play/release/ et app/build/outputs/apk/android10Legacy/release/.
 
