@@ -69,7 +69,9 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace \
             :app:testPlayDebugUnitTest \
+            :app:testAndroid10LegacyDebugUnitTest \
             :app:lintPlayRelease \
+            :app:lintAndroid10LegacyRelease \
             :app:assemblePlayRelease \
             :app:assembleAndroid10LegacyRelease
 
@@ -81,6 +83,8 @@ jobs:
           path: |
             app/build/reports/tests/testPlayDebugUnitTest/
             app/build/test-results/testPlayDebugUnitTest/
+            app/build/reports/tests/testAndroid10LegacyDebugUnitTest/
+            app/build/test-results/testAndroid10LegacyDebugUnitTest/
           if-no-files-found: ignore
           retention-days: 7
 
