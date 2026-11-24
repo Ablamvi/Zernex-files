@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.1.0 — moteur d’archives professionnel (branche de validation)
+- Renforcement de la CI : tests unitaires et lint exécutés pour Play et Android 10 Legacy.
+- Tests supplémentaires pour les chemins ZIP absolus (Unix/Windows), les répertoires implicites et la préservation d’une destination non vide.
 - Ajout d’un moteur local multi-format : ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ ; décompression GZ/BZ2/XZ.
 - Création ZIP chiffrée AES-256 facultative (mot de passe minimum 8 caractères) et extraction avec mot de passe ZIP/7Z.
 - Ajout du choix du format, de l’aperçu du contenu et d’une extraction dans un nouveau dossier.
