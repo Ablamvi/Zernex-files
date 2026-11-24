@@ -1,11 +1,12 @@
-ZERNEX Files 1.1.0 — branche feature/pro-archives-1.1.0
+ZERNEX Files 1.1.0 — branche improve/1.1.0-ci-hardening
 
 Changements intégrés :
 - Moteur local d’archives ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2, TAR.XZ ; décompression GZ/BZ2/XZ.
 - Création ZIP AES-256 facultative (mot de passe d’au moins 8 caractères) ; mot de passe ZIP/7Z accepté à l’extraction.
 - Choix du format, aperçu des entrées, extraction dans un nouveau dossier.
 - Protection contre Zip Slip, chemins absolus, collisions, doublons, liens TAR, fichiers existants écrasés et décompression sans limite.
-- Tests unitaires ZIP, AES-256, 7Z, TAR.GZ et Zip Slip.
+- Tests unitaires ZIP, AES-256, 7Z, TAR.GZ, Zip Slip, chemins absolus Windows/Unix, répertoires implicites et refus de destination non vide.
+- CI renforcée : tests unitaires et lint exécutés sur Play et Android 10 Legacy.
 - Guide français et matrice des capacités/limites ajoutés.
 - VersionName 1.1.0 / versionCode 1100.
 
@@ -15,6 +16,6 @@ Limites déclarées :
 - Onglets, double panneau, réseau et file persistante de transferts restent à développer.
 
 Validation :
-- Build Android, lint, tests unitaires et validation du certificat en attente du workflow GitHub Actions.
+- Build Android, lint des deux variantes, tests unitaires des deux variantes et validation du certificat en attente du workflow GitHub Actions.
 - Aucun APK 1.1.0 n’est déclaré validé ou prêt tant que le workflow complet n’est pas vert.
 - Tests sur appareils physiques Android 10, Android 11+, stockage USB et carte SD encore requis.
