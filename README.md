@@ -1,4 +1,4 @@
-# ZERNEX Files 1.0.1
+# ZERNEX Files 1.0.4
 
 Gestionnaire de fichiers Android avec accès direct au stockage partagé lorsque Android l'autorise, navigateur SAF en option et interface Material 3 colorée.
 
@@ -35,7 +35,7 @@ Compilation :
 Pour vérifier localement, installer Android SDK (API 36 et Build Tools 36.0.0), JDK 17 et laisser Gradle télécharger les dépendances, puis lancer :
 
 ```bash
-./gradlew :app:lintPlayRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
+./gradlew :app:lintPlayRelease :app:lintAndroid10LegacyRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
 ```
 
 Les APK sont générés sous :
@@ -50,7 +50,7 @@ La signature de release est facultative en local et peut être fournie par varia
 
 Les vues qui portent une tâche complète sont des pages dédiées, avec leur propre barre supérieure et une navigation Retour :
 
-- navigateur principal, recherche et réglages d’affichage ;
+- navigateur principal, recherche et réglages d'affichage ;
 - paramètres généraux (sections Affichage, Ouverture, Archives, Actions et Dossiers) ;
 - éditeur texte avec état non enregistré, sauvegarde et retour contrôlé ;
 - aperçu de fichier et page de propriétés ;
