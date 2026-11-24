@@ -37,6 +37,10 @@ check("ZIP AES-256 password protection", 'AesKeyStrength.KEY_STRENGTH_256' in ar
 check("7z memory cap", 'setMaxMemoryLimitKiB(MAX_7Z_MEMORY_KIB)' in archive)
 check("archive integration and explicit password UI", 'ArchiveEngine.create(' in local and 'ArchiveEngine.extractSafely(' in local and 'PasswordVisualTransformation()' in local)
 check("archive tests cover formats and Zip Slip", archive_tests.is_file() and all(token in archive_tests.read_text(encoding="utf-8") for token in ['zipSlipEntryIsRejected', 'sevenZipRoundTrip', 'aes256ZipRequiresPassword']))
+
+workflow = (ROOT / ".github/workflows/android-release.yml").read_text(encoding="utf-8")
+check("CI tests both distribution variants", all(task in workflow for task in [":app:testPlayDebugUnitTest", ":app:testAndroid10LegacyDebugUnitTest"]))
+check("CI lints both distribution variants", all(task in workflow for task in [":app:lintPlayRelease", ":app:lintAndroid10LegacyRelease"]))
 check("archive libraries pinned", all(token in build for token in ['commons-compress:1.28.0', 'xz:1.12', 'zip4j:2.11.6']))
 check("colorful UI theme", all(token in main for token in ['0xFFFFB45C', '0xFF45D1C1', '0xFF9A8CFF']))
 check("high-contrast text palette", '0xFFFFFFFF' in main and '0xFFD0DAEA' in main and 'LocalContentColor provides MaterialTheme.colorScheme.onSurface' in main)
