@@ -110,4 +110,51 @@ class ArchiveEngineTest {
         assertFalse(File(temporary.root, "escape.txt").exists())
         assertTrue(destination.listFiles().isNullOrEmpty())
     }
+    @Test
+    fun zipExtractsNestedFilesWithoutExplicitDirectoryEntries() {
+        val archive = File(temporary.root, "implicit-directories.zip")
+        ZipOutputStream(archive.outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry("one/two/three.txt"))
+            zip.write("nested payload".toByteArray())
+            zip.closeEntry()
+        }
+
+        val destination = File(temporary.root, "implicit-output")
+        assertEquals(1, ArchiveEngine.extractSafely(archive, destination))
+        assertEquals("nested payload", File(destination, "one/two/three.txt").readText())
+    }
+
+    @Test
+    fun zipAbsoluteAndWindowsDrivePathsAreRejected() {
+        listOf("/absolute-escape.txt", "C:/windows-escape.txt").forEachIndexed { index, entryName ->
+            val archive = File(temporary.root, "absolute-$index.zip")
+            ZipOutputStream(archive.outputStream()).use { zip ->
+                zip.putNextEntry(ZipEntry(entryName))
+                zip.write("must not escape".toByteArray())
+                zip.closeEntry()
+            }
+
+            val destination = File(temporary.root, "absolute-output-$index")
+            assertTrue(runCatching { ArchiveEngine.extractSafely(archive, destination) }.isFailure)
+            assertTrue(destination.listFiles().isNullOrEmpty())
+        }
+        assertFalse(File(temporary.root, "absolute-escape.txt").exists())
+    }
+
+    @Test
+    fun extractionRefusesNonEmptyDestinationWithoutChangingIt() {
+        val archive = File(temporary.root, "safe.zip")
+        ZipOutputStream(archive.outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry("new.txt"))
+            zip.write("new".toByteArray())
+            zip.closeEntry()
+        }
+        val destination = File(temporary.root, "non-empty").apply { mkdirs() }
+        val existing = File(destination, "keep.txt").apply { writeText("keep me") }
+
+        assertTrue(runCatching { ArchiveEngine.extractSafely(archive, destination) }.isFailure)
+        assertEquals("keep me", existing.readText())
+        assertFalse(File(destination, "new.txt").exists())
+    }
+
 }
