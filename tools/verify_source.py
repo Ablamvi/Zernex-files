@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static release checks for ZERNEX Files 1.0.3 (no Android SDK required)."""
+"""Static release checks for ZERNEX Files 1.1.0 (no Android SDK required)."""
 from pathlib import Path
 import re
 import sys
@@ -16,8 +16,10 @@ manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8
 main = (ROOT / "app/src/main/java/com/zernex/files/MainActivity.kt").read_text(encoding="utf-8")
 local = (ROOT / "app/src/main/java/com/zernex/files/AdvancedFileManager.kt").read_text(encoding="utf-8")
 saf = (ROOT / "app/src/main/java/com/zernex/files/SafFileManager.kt").read_text(encoding="utf-8")
+archive = (ROOT / "app/src/main/java/com/zernex/files/ArchiveEngine.kt").read_text(encoding="utf-8")
+archive_tests = ROOT / "app/src/test/java/com/zernex/files/ArchiveEngineTest.kt"
 
-check("version 1.0.4", 'versionName = "1.0.4"' in build)
+check("version 1.1.0", 'versionName = "1.1.0"' in build)
 check("Play target API 36", 'create("play")' in build and 'targetSdk = 36' in build)
 check("Android 10 legacy target API 29", 'create("android10Legacy")' in build and 'targetSdk = 29' in build and 'LEGACY_STORAGE", "true"' in build)
 check("manifest legacy placeholder", 'android:requestLegacyExternalStorage="${requestLegacyExternalStorage}"' in manifest)
@@ -28,7 +30,18 @@ check("SAF optional / not default on modern Android", 'ActivityResultContracts.O
 check("visible breadcrumb and search", 'Text("ZERNEX Files"' in local and 'Icons.Default.Search' in local)
 check("multi-selection and bulk rename", 'Tout sélectionner' in local and 'bulk_rename' in local and 'renameLocalSelection' in local)
 check("copy/cut/paste protections", 'transferLocalFiles' in local and 'clipboardPaths.isEmpty()' in local)
-check("ZIP create and extraction guards", 'createZipArchive' in local and 'extractZipSafely' in local)
+check("legacy ZIP implementation retained for compatibility", 'createZipArchive' in local and 'extractZipSafely' in local)
+check("ArchiveEngine ZIP/7Z/TAR formats", all(token in archive for token in ['ZIP("ZIP"', 'SEVEN_Z("7Z"', 'TAR_GZ("TAR.GZ"', 'TAR_BZ2("TAR.BZ2"', 'TAR_XZ("TAR.XZ"']))
+check("archive extraction rejects traversal and links", 'startsWith(rootPrefix)' in archive and 'isSymbolicLink' in archive and 'entryCount < MAX_ENTRIES' in archive)
+check("ZIP AES-256 password protection", 'AesKeyStrength.KEY_STRENGTH_256' in archive and 'EncryptionMethod.AES' in archive)
+check("7z memory cap", 'setMaxMemoryLimitKiB(MAX_7Z_MEMORY_KIB)' in archive)
+check("archive integration and explicit password UI", 'ArchiveEngine.create(' in local and 'ArchiveEngine.extractSafely(' in local and 'PasswordVisualTransformation()' in local)
+check("archive tests cover formats and Zip Slip", archive_tests.is_file() and all(token in archive_tests.read_text(encoding="utf-8") for token in ['zipSlipEntryIsRejected', 'sevenZipRoundTrip', 'aes256ZipRequiresPassword']))
+
+workflow = (ROOT / ".github/workflows/android-release.yml").read_text(encoding="utf-8")
+check("CI tests both distribution variants", all(task in workflow for task in [":app:testPlayDebugUnitTest", ":app:testAndroid10LegacyDebugUnitTest"]))
+check("CI lints both distribution variants", all(task in workflow for task in [":app:lintPlayRelease", ":app:lintAndroid10LegacyRelease"]))
+check("archive libraries pinned", all(token in build for token in ['commons-compress:1.28.0', 'xz:1.12', 'zip4j:2.11.6']))
 check("colorful UI theme", all(token in main for token in ['0xFFFFB45C', '0xFF45D1C1', '0xFF9A8CFF']))
 check("high-contrast text palette", '0xFFFFFFFF' in main and '0xFFD0DAEA' in main and 'LocalContentColor provides MaterialTheme.colorScheme.onSurface' in main)
 check("colorful file-type icons", 'private fun fileAccent' in local and 'private fun safAccent' in saf and 'Brush.linearGradient' in saf)
@@ -70,7 +83,7 @@ def strip_kotlin(text):
     text = re.sub(r"//[^\n]*", " ", text)
     return text
 
-for path in sorted((ROOT / "app/src/main/java").rglob("*.kt")):
+for path in sorted(list((ROOT / "app/src/main/java").rglob("*.kt")) + list((ROOT / "app/src/test/java").rglob("*.kt"))):
     src = strip_kotlin(path.read_text(encoding="utf-8"))
     stack = []
     pairs = {')': '(', ']': '[', '}': '{'}

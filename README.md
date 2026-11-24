@@ -1,79 +1,61 @@
-# ZERNEX Files 1.0.1
+# ZERNEX Files 1.1.0
 
-Gestionnaire de fichiers Android avec accès direct au stockage partagé lorsque Android l'autorise, navigateur SAF en option et interface Material 3 colorée.
+Gestionnaire de fichiers Android avec navigation locale/SAF, opérations groupées, corbeille, outils intégrés et moteur d’archives multi-formats. Application locale : les fichiers ne sont pas envoyés vers un service ZERNEX.
+
+**Guide pas à pas :** docs/GUIDE_UTILISATION_FR_1.1.0.md  
+**Matrice stricte des capacités et limites :** docs/FEATURES_AND_LIMITS_1.1.0.md
+
+## Archives 1.1.0 — moteur local
+
+- Lecture, création et extraction : ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2 et TAR.XZ.
+- Décompression simple : GZ, BZ2 et XZ.
+- Création ZIP chiffrée AES-256 avec mot de passe d’au moins 8 caractères.
+- Mot de passe d’extraction ZIP et 7Z.
+- Aperçu des entrées et extraction dans un nouveau dossier.
+- Extraction sans écrasement, validation stricte des chemins, refus des liens/fichiers spéciaux, nettoyage des éléments partiels et plafonds anti-archive-bombe.
+- RAR/RAR5, ISO, CAB, ARJ, ZST, archives multi-volumes et édition en place ne sont pas pris en charge dans cette version.
+
+Le moteur avancé d’archives est disponible dans le navigateur de stockage local. Le mode SAF conserve actuellement ses actions ZIP ; il n’y a pas encore de parité multi-format entre les deux moteurs.
 
 ## Variantes Android
 
-### `play` — distribution Play Store
+### play — distribution Google Play
+- targetSdk = 36.
+- Android 11+ : accès direct après activation explicite de **Gérer tous les fichiers** ; SAF reste disponible pour un dossier sélectionné.
+- Android 10 : accès SAF limité au dossier choisi. La variante moderne ne contourne pas le stockage cloisonné.
 
-- `targetSdk = 36`.
-- Android 11 et versions ultérieures : accès direct au stockage partagé après activation de **Gérer tous les fichiers** dans les paramètres Android.
-- Android 10 : le système n'offre pas `MANAGE_EXTERNAL_STORAGE` ; le navigateur passe par SAF pour l'accès aux dossiers. Cette limite ne peut pas être supprimée avec une application qui cible une API moderne.
-- SAF reste disponible à la demande sur Android 11+ pour ouvrir un emplacement isolé.
+### android10Legacy — APK de distribution directe
+- targetSdk = 29, requestLegacyExternalStorage=true.
+- Destinée à Android 10 uniquement et à la distribution hors Google Play.
+- Accès direct après autorisations classiques.
 
-Compilation :
+## Compilation
 
-```bash
-./gradlew :app:assemblePlayRelease
-```
+Environnement requis : JDK 17, Android SDK API 36 et Build Tools 36.0.0.
 
-### `android10Legacy` — APK de distribution directe pour Android 10
+- Tests unitaires : ./gradlew :app:testPlayDebugUnitTest :app:testAndroid10LegacyDebugUnitTest
+- Lint et deux compilations : ./gradlew :app:testPlayDebugUnitTest :app:testAndroid10LegacyDebugUnitTest :app:lintPlayRelease :app:lintAndroid10LegacyRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
 
-- `targetSdk = 29` et `android:requestLegacyExternalStorage="true"`.
-- Demande les permissions Android classiques de lecture/écriture et utilise le volume partagé avec `java.io.File`.
-- L'application démarre directement dans le stockage partagé ; elle ne demande pas de sélectionner un dossier SAF.
-- Cette variante est destinée aux appareils sous Android 10 (API 29) et à une distribution hors Google Play. Ne pas la publier sur Play Store.
+Les APK sont générés sous app/build/outputs/apk/play/release/ et app/build/outputs/apk/android10Legacy/release/.
 
-Compilation :
+La signature Release est optionnelle localement et fournie par les variables ZERNEX_KEYSTORE_FILE, ZERNEX_KEYSTORE_PASSWORD, ZERNEX_KEY_ALIAS, ZERNEX_KEY_PASSWORD. Conserver le certificat privé d’origine pour les mises à jour ; ne jamais commiter le keystore.
 
-```bash
-./gradlew :app:assembleAndroid10LegacyRelease
-```
+## Fonctionnalités déjà intégrées
 
-## Génération et vérification
+- Navigation, fil d’Ariane, recherche simple/avancée, tri, filtres et dossiers cachés.
+- Favoris, récents, dossier de démarrage, vues liste/grille.
+- Sélection multiple, renommage groupé, copier/couper/coller, partage et gestion des collisions.
+- Création de fichiers/dossiers, éditeur texte, corbeille et restauration.
+- Aperçus image, PDF, audio et vidéo.
+- Propriétés, MD5, taille des dossiers, recherche de doublons, inspection de certificats et keystores.
+- Navigateur SAF avec favoris, recherche, opérations de documents, corbeille, propriétés, éditeur et ZIP selon les capacités du fournisseur.
 
-Pour vérifier localement, installer Android SDK (API 36 et Build Tools 36.0.0), JDK 17 et laisser Gradle télécharger les dépendances, puis lancer :
+## Limites connues
 
-```bash
-./gradlew :app:lintPlayRelease :app:assemblePlayRelease :app:assembleAndroid10LegacyRelease
-```
+Onglets, double panneau, transfert persistant avec pause/reprise, réseau SFTP/SMB/WebDAV, Shizuku/root, RAR/RAR5 et parité multi-format SAF ne sont pas encore intégrés. Les restrictions Android sur les données privées et les emplacements système restent applicables.
 
-Les APK sont générés sous :
+## Qualité et validation
 
-- `app/build/outputs/apk/play/release/`
-- `app/build/outputs/apk/android10Legacy/release/`
+La CI exécute le vérificateur statique, les tests unitaires du moteur d’archives, le lint Play et les deux compilations Release. La réussite de la CI ne remplace pas les essais manuels sur Android 10, Android 11+, carte SD et stockage USB.
 
-La signature de release est facultative en local et peut être fournie par variables d'environnement :
-`ZERNEX_KEYSTORE_FILE`, `ZERNEX_KEYSTORE_PASSWORD`, `ZERNEX_KEY_ALIAS`, `ZERNEX_KEY_PASSWORD`.
-
-## Écrans et navigation
-
-Les vues qui portent une tâche complète sont des pages dédiées, avec leur propre barre supérieure et une navigation Retour :
-
-- navigateur principal, recherche et réglages d’affichage ;
-- paramètres généraux (sections Affichage, Ouverture, Archives, Actions et Dossiers) ;
-- éditeur texte avec état non enregistré, sauvegarde et retour contrôlé ;
-- aperçu de fichier et page de propriétés ;
-- récents, favoris, corbeille, doublons, stockage et autorisations ;
-- en mode SAF : éditeur, aperçu, propriétés, paramètres, favoris et corbeille.
-
-Les fenêtres de dialogue sont réservées aux décisions ponctuelles (création/renommage, confirmation de suppression, conflit de nom ou fermeture avec modifications non enregistrées). Les actions principales ne reposent plus sur un bouton flottant.
-
-## Fonctions conservées
-
-- navigation par chemin et fil d'Ariane, recherche simple et avancée, filtres et sous-dossiers ;
-- favoris, récents, dossier de démarrage, affichage liste/grille, fichiers cachés et tri ;
-- sélection multiple, sélection totale, renommage individuel et groupé ;
-- copier, couper, coller, partage et gestion des collisions ;
-- création de dossiers et fichiers texte, éditeur intégré ;
-- corbeille, restauration, suppression avec confirmation ;
-- création et extraction ZIP, aperçu ZIP ;
-- aperçus image, PDF, vidéo et audio en mode local ;
-- détails, MD5, taille des dossiers, recherche de doublons et aperçu de certificats/keystores ;
-- navigateur SAF avec favoris, recherche, multi-sélection, renommage, transferts, corbeille, propriétés, éditeur texte et ZIP.
-
-Les fournisseurs SAF peuvent limiter certaines actions. Toutes les opérations ne sont donc pas garanties sur chaque fournisseur tiers ou chaque carte SD.
-
-## Licence
-
-Voir `LICENSE` et `docs/THIRD_PARTY_NOTICES.md`.
+Voir également CHANGELOG.md, docs/TEST_PLAN_1.0.1.md et docs/THIRD_PARTY_NOTICES.md.
