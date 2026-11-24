@@ -1,4 +1,4 @@
-name: ZERNEX Files 1.0.1 - Android validation
+name: ZERNEX Files 1.0.4 - Android validation
 
 on:
   workflow_dispatch:
@@ -60,19 +60,20 @@ jobs:
             echo "No release keystore configured; release APKs will be unsigned."
           fi
 
-      - name: Run Play lint and build both release APKs
+      - name: Run lint and build both release variants
         run: |
           set -euo pipefail
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace \
             :app:lintPlayRelease \
+            :app:lintAndroid10LegacyRelease \
             :app:assemblePlayRelease \
             :app:assembleAndroid10LegacyRelease
 
       - name: Upload Play APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZERNEX-Files-1.0.1-Play
+          name: ZERNEX-Files-1.0.4-Play
           path: app/build/outputs/apk/play/release/*.apk
           if-no-files-found: error
           retention-days: 30
@@ -80,7 +81,7 @@ jobs:
       - name: Upload Android 10 legacy APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZERNEX-Files-1.0.1-Android10-Legacy
+          name: ZERNEX-Files-1.0.4-Android10-Legacy
           path: app/build/outputs/apk/android10Legacy/release/*.apk
           if-no-files-found: error
           retention-days: 30
